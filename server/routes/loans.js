@@ -13,16 +13,16 @@ router.get('/pending', async (req, res) => {
     }
 });
 
-router.post('/approve', async (req, res) => {
+router.post('/approve/:id', async (req, res) => {
     try {
-        const { loan_id } = req.params;
-        const { emp_id } = req.body;
+        const { id } = req.params;
+        const emp_id_approved = 1;
         const todayDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
         try {
             await db.query(
-                'UPDATE loans SET approve_date = ?, employee_id = ? WHERE loan_id = ?',
-                [todayDate, emp_id, loan_id]
+                'UPDATE loans SET approve_date = ?, emp_id_approved = ? WHERE loan_id = ?',
+                [todayDate, emp_id_approved, id]
             );
             res.json({ message: 'Loan approved successfully' });
         } catch (error) {

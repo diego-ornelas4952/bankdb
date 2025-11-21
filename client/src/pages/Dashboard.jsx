@@ -3,25 +3,43 @@ import React, { useEffect, useState } from 'react';
 export default function Dashboard() {
     const [prestamos, setPrestamos] = useState([]);
 
-    // Al cargar la página, pedimos los datos al Backend
-    useEffect(() => {
+    const cargarPrestamos = () => {
         fetch('http://localhost:3000/api/loans/pending')
             .then(res => res.json())
-            .then(data => setLoans(data))
+            .then(data => setPrestamos(data))
             .catch(err => console.error("Error cargando datos:", err));
+    };
+
+    useEffect(() => {
+        cargarPrestamos();
     }, []);
 
-    const handleAprobar = (id) => {
-        // Aquí llamaríamos al endpoint POST /aprobar
-        // Por ahora solo lo quitamos de la lista visualmente
-        alert(`Aprobando préstamo ${id}...`);
+    const handleAprobar = async (id) => {
+        if (!window.confirm("¿Estás seguro de aprobar este crédito?")) return;
+
+        try {
+            const response = await fetch(`http://localhost:3000/api/prestamos/aprobar/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}) // No enviamos body extra por ahora
+            });
+
+            if (response.ok) {
+                alert("¡Crédito aprobado!");
+                cargarPrestamos(); // Recargamos la tabla para que desaparezca el aprobado
+            } else {
+                alert("Hubo un error al aprobar");
+            }
+        } catch (error) {
+            console.error("Error:", error);
+        }
     };
 
     return (
         <div className="min-h-screen bg-gray-100 p-8">
             <header className="mb-8">
-                <h1 className="text-3xl font-bold text-blue-900">Panel de Empleados</h1>
-                <p className="text-gray-600">Gestión de solicitudes pendientes</p>
+                <h1 className="text-3xl font-bold text-blue-900">Banco - Panel Administrativo</h1>
+                <p className="text-gray-600">Solicitudes de crédito por autorizar</p>
             </header>
 
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -29,10 +47,13 @@ export default function Dashboard() {
                     <thead>
                         <tr>
                             <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                ID
+                            </th>
+                            <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                 Cliente
                             </th>
                             <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                Monto Solicitado
+                                Monto (MXN)
                             </th>
                             <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                 Plazo
@@ -43,33 +64,29 @@ export default function Dashboard() {
                         </tr>
                     </thead>
                     <tbody>
-                        {prestamos.map((prestamo) => (
-                            <tr key={prestamo.id_prestamo}>
-                                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                                    <div className="flex items-center">
-                                        <div className="ml-3">
-                                            <p className="text-gray-900 whitespace-no-wrap font-bold">
-                                                {prestamo.nombre_completo}
-                                            </p>
-                                        </div>
-                                    </div>
+                        {prestamos.map((p) => (
+                            // OJO: Aquí usamos las keys que vienen de la nueva Query SQL
+                            <tr key={p.loan_id}>
+                                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm text-gray-500">
+                                    #{p.loan_id}
                                 </td>
-                                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                                    <p className="text-gray-900 whitespace-no-wrap">
-                                        ${prestamo.monto_original}
-                                    </p>
+                                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm font-bold text-gray-800">
+                                    {p.nombre_completo}
+                                </td>
+                                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm text-blue-600 font-bold">
+                                    ${p.amount_org}
                                 </td>
                                 <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                                     <span className="relative inline-block px-3 py-1 font-semibold text-green-900 leading-tight">
                                         <span aria-hidden className="absolute inset-0 bg-green-200 opacity-50 rounded-full"></span>
-                                        <span className="relative">{prestamo.plazo_meses} meses</span>
+                                        <span className="relative">{p.month_term} meses</span>
                                     </span>
                                 </td>
                                 <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                                     <button
-                                        onClick={() => handleAprobar(prestamo.id_prestamo)}
-                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                                        Aprobar
+                                        onClick={() => handleAprobar(p.loan_id)}
+                                        className="bg-indigo-600 hover:bg-indigo-800 text-white font-bold py-2 px-4 rounded transition duration-300 shadow-md">
+                                        Autorizar
                                     </button>
                                 </td>
                             </tr>
@@ -78,7 +95,9 @@ export default function Dashboard() {
                 </table>
 
                 {prestamos.length === 0 && (
-                    <div className="p-5 text-center text-gray-500">No hay solicitudes pendientes.</div>
+                    <div className="p-10 text-center text-gray-500 text-lg">
+                        ✅ No hay solicitudes pendientes por revisar.
+                    </div>
                 )}
             </div>
         </div>
