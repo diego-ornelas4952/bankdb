@@ -1,18 +1,21 @@
-const mysql = require('mysql2');
-require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const loansRoutes = require('./routes/loans');
+const clientsRoutes = require('./routes/clients');
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'ThinkDifferent1997',
-    database: process.env.DB_NAME || 'bankDB',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+
+app.use('/api/loans', loansRoutes);
+app.use('/api/clients', clientsRoutes);
+
+app.get('/', (req, res) => {
+    res.send('BankDB Server is running correctly. Please use the client application to interact.');
 });
 
-const promisePool = pool.promise();
-
-module.exports = promisePool;
-
-application.use('/api/loans', loansRoutes);
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});

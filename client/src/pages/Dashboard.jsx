@@ -5,8 +5,19 @@ export default function Dashboard() {
 
     const cargarPrestamos = () => {
         fetch('http://localhost:3000/api/loans/pending')
-            .then(res => res.json())
-            .then(data => setPrestamos(data))
+            .then(res => {
+                if (!res.ok) throw new Error('Error en la respuesta del servidor');
+                return res.json();
+            })
+            .then(data => {
+                console.log("Datos recibidos:", data);
+                if (Array.isArray(data)) {
+                    setPrestamos(data);
+                } else {
+                    console.error("El formato de datos no es un array:", data);
+                    setPrestamos([]);
+                }
+            })
             .catch(err => console.error("Error cargando datos:", err));
     };
 
@@ -18,7 +29,7 @@ export default function Dashboard() {
         if (!window.confirm("¿Estás seguro de aprobar este crédito?")) return;
 
         try {
-            const response = await fetch(`http://localhost:3000/api/prestamos/aprobar/${id}`, {
+            const response = await fetch(`http://localhost:3000/api/loans/approve/${id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({}) // No enviamos body extra por ahora

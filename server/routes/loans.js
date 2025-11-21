@@ -5,7 +5,7 @@ const db = require('../config/db');
 router.get('/pending', async (req, res) => {
     try {
         const sql =
-            'SELECT p.loan_id, c.client_id, p.amount, p.interest_rate, p.term, p.status FROM loans p JOIN clients c ON p.client_id = c.client_id WHERE p.approve_date IS NULL';
+            'SELECT p.loan_id, c.client_id, p.amount_org, p.interest_rate, p.month_term, CONCAT(c.name, " ", c.lastname, " ", c.lastname2) as nombre_completo FROM loans p JOIN clients c ON p.client_id = c.client_id WHERE p.approve_date IS NULL';
         const [rows] = await db.query(sql);
         res.json(rows);
     } catch (error) {
@@ -32,3 +32,5 @@ router.post('/approve/:id', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+module.exports = router;
