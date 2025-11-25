@@ -33,4 +33,31 @@ router.post('/approve/:id', async (req, res) => {
     }
 });
 
+// Solicitud de préstamo por parte del cliente
+router.post('/solicitar', async (req, res) => {
+    const { client_id, amount, months } = req.body;
+
+    // Validaciones básicas de negocio
+    if (amount <= 0 || months <= 0) {
+        return res.status(400).json({ message: "Datos inválidos" });
+    }
+
+    try {
+        // Insertamos en 'loans'. 
+        // Nota: cap_balance inicia igual al monto original. tolerance inicia en 0.
+        const sql = `
+            INSERT INTO loans 
+            (client_id, amount_org, cap_balance, month_term, interest_rate, tolerance, approve_date) 
+            VALUES (?, ?, ?, ?, 15.0, 0, NULL)
+        `;
+        // Asumimos una tasa fija del 15.0% por ahora
+        await db.query(sql, [client_id, amount, amount, months]);
+
+        res.json({ message: "Solicitud enviada a revisión" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

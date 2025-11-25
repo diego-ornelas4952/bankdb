@@ -6,7 +6,7 @@ router.get('/usuario/:client_id', async (req, res) => {
     const { client_id } = req.params;
     try {
         const [accounts] = await db.query(
-            'SELECT * FROM accounts WHERE client_id = ?',
+            'SELECT * FROM account WHERE client_id = ?',
             [client_id]
         );
         res.json(accounts);
@@ -28,6 +28,13 @@ router.get('/:acc_id/movimientos', async (req, res) => {
         console.error('Error al obtener los movimientos:', error);
         res.status(500).json({ error: 'Error al obtener los movimientos' });
     }
+});
+
+// Obtener tarjetas de una cuenta especifica
+router.get('/:acc_id/tarjetas', async (req, res) => {
+    const { acc_id } = req.params;
+    const [tarjetas] = await db.query('SELECT * FROM card WHERE acc_id = ?', [acc_id]);
+    res.json(tarjetas);
 });
 
 module.exports = router;

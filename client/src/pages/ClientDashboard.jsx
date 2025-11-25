@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 
 export default function ClientDashboard({ user, onLogout }) {
+    const [montoSolicitud, setMontoSolicitud] = useState(0);
+    const [plazoSolicitud, setPlazoSolicitud] = useState(12);
     const [cuentas, setCuentas] = useState([]);
     const [movimientos, setMovimientos] = useState([]);
     const [cuentaSeleccionada, setCuentaSeleccionada] = useState(null);
@@ -37,7 +39,7 @@ export default function ClientDashboard({ user, onLogout }) {
             <nav className="bg-blue-900 text-white p-4 flex justify-between items-center shadow-lg">
                 <div>
                     <h1 className="text-2xl font-bold">Banco Seguro</h1>
-                    <p className="text-sm opacity-80">Bienvenido, {user.name}</p>
+                    <p className="text-sm opacity-80">Bienvenido, {user?.name}</p>
                 </div>
                 <button
                     onClick={onLogout}
@@ -57,8 +59,8 @@ export default function ClientDashboard({ user, onLogout }) {
                             key={cuenta.acc_id}
                             onClick={() => setCuentaSeleccionada(cuenta)}
                             className={`p-6 rounded-xl shadow-md cursor-pointer transition transform hover:scale-105 border-l-4 ${cuentaSeleccionada?.acc_id === cuenta.acc_id
-                                    ? 'bg-white border-blue-500 ring-2 ring-blue-100'
-                                    : 'bg-white border-transparent opacity-80'
+                                ? 'bg-white border-blue-500 ring-2 ring-blue-100'
+                                : 'bg-white border-transparent opacity-80'
                                 }`}
                         >
                             <p className="text-gray-500 text-sm uppercase font-bold tracking-wider">{cuenta.acc_type}</p>
@@ -110,7 +112,52 @@ export default function ClientDashboard({ user, onLogout }) {
                         </div>
                     </div>
                 </div>
-
+                {/* Sección de Préstamos */}
+                <div className="md:col-span-3 mt-8 bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">Solicitar Crédito Nuevo</h2>
+                    <div className="flex gap-4 items-end">
+                        <div>
+                            <label className="block text-gray-700 text-sm font-bold mb-2">Monto</label>
+                            <input
+                                type="number"
+                                className="border rounded p-2 w-full"
+                                placeholder="Ej. 5000"
+                                onChange={(e) => setMontoSolicitud(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-gray-700 text-sm font-bold mb-2">Plazo (Meses)</label>
+                            <select
+                                className="border rounded p-2 w-full"
+                                onChange={(e) => setPlazoSolicitud(e.target.value)}
+                                value={plazoSolicitud}
+                            >
+                                <option value="6">6 Meses</option>
+                                <option value="12">12 Meses</option>
+                                <option value="24">24 Meses</option>
+                            </select>
+                        </div>
+                        <button
+                            onClick={() => {
+                                fetch('http://localhost:3000/api/prestamos/solicitar', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        client_id: user.client_id, // Tu usuario logueado
+                                        amount: montoSolicitud,
+                                        months: plazoSolicitud
+                                    })
+                                })
+                                    .then(res => res.json())
+                                    .then(data => alert(data.message))
+                                    .catch(err => console.error(err));
+                            }}
+                            className="bg-green-600 text-white font-bold py-2 px-6 rounded hover:bg-green-700 transition"
+                        >
+                            Solicitar
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

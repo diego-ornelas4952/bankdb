@@ -45,4 +45,21 @@ router.post('/login', async (req, res) => {
     }
 });
 
+router.post('/register', async (req, res) => {
+    const { name, lastname, email, password, address, phone } = req.body;
+
+    try {
+        const [userExists] = await db.query('SELECT * FROM clients WHERE email = ?', [email]);
+        if (userExists.length > 0) {
+            return res.status(400).json({ success: false, message: 'The email is already registered' });
+        }
+
+        const sql = 'INSERT INTO clients (name, lastname, email, password, address, phone) VALUES (?, ?, ?, ?, ?, ?)'; await db.query(sql, [name, lastname, email, password, address, phone]);
+
+        res.json({ success: true, message: 'User created!' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
