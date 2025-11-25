@@ -7,6 +7,12 @@ export default function ClientDashboard({ user, onLogout }) {
     const [movimientos, setMovimientos] = useState([]);
     const [cuentaSeleccionada, setCuentaSeleccionada] = useState(null);
 
+    // Estado para nueva transacción
+    const [tipoTransaccion, setTipoTransaccion] = useState('DEPOSITO');
+    const [montoTransaccion, setMontoTransaccion] = useState(0);
+    const [descTransaccion, setDescTransaccion] = useState('');
+    const [idCuentaTransaccion, setIdCuentaTransaccion] = useState('');
+
     // 1. Al cargar, buscamos las cuentas de este usuario
     useEffect(() => {
         if (user && user.client_id) {
@@ -17,6 +23,7 @@ export default function ClientDashboard({ user, onLogout }) {
                     // Si tiene cuentas, seleccionamos la primera por defecto para ver sus movimientos
                     if (data.length > 0) {
                         setCuentaSeleccionada(data[0]);
+                        setIdCuentaTransaccion(data[0].acc_id); // Seleccionar la primera para transacciones también
                     }
                 })
                 .catch(err => console.error("Error cargando cuentas:", err));
@@ -155,6 +162,91 @@ export default function ClientDashboard({ user, onLogout }) {
                             className="bg-green-600 text-white font-bold py-2 px-6 rounded hover:bg-green-700 transition"
                         >
                             Solicitar
+                        </button>
+                    </div>
+                </div>
+
+                <div className="md:col-span-3 mt-8 bg-white p-6 rounded-xl shadow-lg border-t-4 border-purple-500">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">Simular Transacción (Cajero/Ventanilla)</h2>
+                    <div className="flex flex-wrap gap-4 items-end">
+                        <div className="w-full md:w-1/4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">Cuenta</label>
+                            <select
+                                className="border rounded p-2 w-full"
+                                value={idCuentaTransaccion}
+                                onChange={(e) => setIdCuentaTransaccion(e.target.value)}
+                            >
+                                {cuentas.map(c => (
+                                    <option key={c.acc_id} value={c.acc_id}>
+                                        {c.acc_type} - ${c.balance} ({c.currency})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="w-full md:w-1/5">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">Tipo</label>
+                            <select
+                                className="border rounded p-2 w-full"
+                                value={tipoTransaccion}
+                                onChange={(e) => setTipoTransaccion(e.target.value)}
+                            >
+                                <option value="DEPOSITO">Depósito (+)</option>
+                                <option value="RETIRO">Retiro (-)</option>
+                            </select>
+                        </div>
+                        <div className="w-full md:w-1/5">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">Monto</label>
+                            <input
+                                type="number"
+                                className="border rounded p-2 w-full"
+                                placeholder="0.00"
+                                onChange={(e) => setMontoTransaccion(e.target.value)}
+                            />
+                        </div>
+                        <div className="w-full md:w-1/4">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">Descripción (Opcional)</label>
+                            <input
+                                type="text"
+                                className="border rounded p-2 w-full"
+                                placeholder="Ej. Compra..."
+                                onChange={(e) => setDescTransaccion(e.target.value)}
+                            />
+                        </div>
+                        <button
+                            onClick={() => {
+                                if (!idCuentaTransaccion) return alert("Selecciona una cuenta primero");
+                                fetch('http://localhost:3000/api/accounts/transaction', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        acc_id: idCuentaTransaccion,
+                                        type: tipoTransaccion,
+                                        amount: montoTransaccion,
+                                        description: descTransaccion
+                                    })
+                                })
+                                    .then(res => {
+                                        if (!res.ok) return res.json().then(err => { throw new Error(err.message) });
+                                        return res.json();
+                                    })
+                                    .then(data => {
+                                        alert(data.message);
+                                        // Recargar movimientos de la cuenta seleccionada visualmente (si coincide)
+                                        if (cuentaSeleccionada && cuentaSeleccionada.acc_id == idCuentaTransaccion) {
+                                            fetch(`http://localhost:3000/api/accounts/${idCuentaTransaccion}/movimientos`)
+                                                .then(res => res.json())
+                                                .then(data => setMovimientos(data));
+                                        }
+                                        // Recargar saldo de TODAS las cuentas
+                                        fetch(`http://localhost:3000/api/accounts/usuario/${user.client_id}`)
+                                            .then(res => res.json())
+                                            .then(data => setCuentas(data));
+                                    })
+                                    .catch(err => alert("Error: " + err.message));
+                            }}
+                            className="bg-purple-600 text-white font-bold py-2 px-6 rounded hover:bg-purple-700 transition"
+                        >
+                            Aplicar
                         </button>
                     </div>
                 </div>

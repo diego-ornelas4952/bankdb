@@ -60,7 +60,7 @@ router.post('/approve/:id', async (req, res) => {
 
             // B) Registrar la transacción en el historial
             await connection.query(
-                'INSERT INTO transactions (account_id, trn_type, description, date_time, amount) VALUES (?, ?, ?, ?, ?)',
+                'INSERT INTO transactions (acc_id, trn_type, description, date_time, amount) VALUES (?, ?, ?, ?, ?)',
                 [acc_id, 'DEPOSITO', `Desembolso Préstamo #${id}`, new Date(), loan.amount_org]
             );
         }
