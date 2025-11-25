@@ -107,4 +107,14 @@ router.post('/request', async (req, res) => {
     }
 });
 
+router.get('/client/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [rows] = await db.query('SELECT * FROM loans WHERE client_id = ? ORDER BY loan_id DESC', [id]);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

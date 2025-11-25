@@ -46,7 +46,7 @@ router.post('/login', async (req, res) => {
 });
 
 router.post('/register', async (req, res) => {
-    const { name, lastname, email, password, address, phone } = req.body;
+    const { name, lastname, lastname2, email, password, address, phone } = req.body;
 
     try {
         const [userExists] = await db.query('SELECT * FROM clients WHERE email = ?', [email]);
@@ -54,8 +54,8 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ success: false, message: 'The email is already registered' });
         }
 
-        const sql = 'INSERT INTO clients (name, lastname, email, password, address, phone) VALUES (?, ?, ?, ?, ?, ?)';
-        const [result] = await db.query(sql, [name, lastname, email, password, address, phone]);
+        const sql = 'INSERT INTO clients (name, lastname, lastname2, email, password, address, phone) VALUES (?, ?, ?, ?, ?, ?, ?)';
+        const [result] = await db.query(sql, [name, lastname, lastname2, email, password, address, phone]);
 
         // Crear cuenta por defecto (Ahorro MXN)
         const clientId = result.insertId;

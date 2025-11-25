@@ -14,6 +14,10 @@ function App() {
         setRole(roleUser);
     };
 
+    const handleUpdateUser = (updatedUser) => {
+        setUser(updatedUser);
+    };
+
     const handleLogout = () => {
         setUser(null);
         setRole('');
@@ -40,7 +44,7 @@ function App() {
 
     if (role === 'client') {
         return (
-            <ClientDashboard user={user} onLogout={handleLogout} />
+            <ClientDashboard user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
         );
     }
 }

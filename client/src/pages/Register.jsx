@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 export default function Register({ onSwitchToLogin }) {
     const [name, setName] = useState('');
     const [lastname, setLastname] = useState('');
+    const [lastname2, setLastname2] = useState('');
+    const [address, setAddress] = useState('');
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -33,18 +35,18 @@ export default function Register({ onSwitchToLogin }) {
             const response = await fetch('http://localhost:3000/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, lastname, phone, email, password })
+                body: JSON.stringify({ name, lastname, lastname2, address, phone, email, password })
             });
 
             const data = await response.json();
 
             if (data.success) {
-                setSuccessMessage('¡Account created successfully!');
+                setSuccessMessage('Account created successfully!');
                 setTimeout(() => {
                     onSwitchToLogin();
                 }, 2000);
             } else {
-                setError(data.message || 'Error al crear la cuenta');
+                setError(data.message || 'Error creating account');
             }
         } catch (err) {
             setError('Error connecting to the server');
@@ -60,8 +62,8 @@ export default function Register({ onSwitchToLogin }) {
             >
                 <div className="absolute inset-0 bg-blue-900 bg-opacity-40 flex items-center justify-center">
                     <div className="text-white text-center p-12">
-                        <h1 className="text-5xl font-bold mb-4">Join to the richest people</h1>
-                        <p className="text-xl font-light">Start to making money!</p>
+                        <h1 className="text-5xl font-bold mb-4">Join to the safest bank</h1>
+                        <p className="text-xl font-light">Start saving your money!</p>
                     </div>
                 </div>
             </div>
@@ -88,7 +90,7 @@ export default function Register({ onSwitchToLogin }) {
                                 />
                             </div>
                             <div>
-                                <label className="block text-gray-700 text-sm font-bold mb-1">Surnames</label>
+                                <label className="block text-gray-700 text-sm font-bold mb-1">Lastname</label>
                                 <input
                                     type="text"
                                     value={lastname}
@@ -98,6 +100,28 @@ export default function Register({ onSwitchToLogin }) {
                                     required
                                 />
                             </div>
+                        </div>
+                        <div>
+                            <label className="block text-gray-700 text-sm font-bold mb-1">Second Lastname (Optional)</label>
+                            <input
+                                type="text"
+                                value={lastname2}
+                                onChange={(e) => setLastname2(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                                placeholder="Smith"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-gray-700 text-sm font-bold mb-1">Address</label>
+                            <input
+                                type="text"
+                                value={address}
+                                onChange={(e) => setAddress(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                                placeholder="123 Main St, City"
+                                required
+                            />
                         </div>
 
                         <div>
@@ -150,7 +174,7 @@ export default function Register({ onSwitchToLogin }) {
                             type="submit"
                             className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-300 font-bold shadow-lg transform hover:-translate-y-0.5"
                         >
-                            Registrarse
+                            Sign Up
                         </button>
                     </form>
 
