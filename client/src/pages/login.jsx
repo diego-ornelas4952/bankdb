@@ -6,12 +6,13 @@ export default function Login({ onLogin, onRegister }) {
     const [error, setError] = useState('');
     const [bgImage, setBgImage] = useState('');
 
-    // Imágenes de fondo aleatorias (Temática: Finanzas, Edificios, Tecnología)
+    // Imágenes de fondo aleatorias (Temática: California)
     const images = [
-        'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop', // Edificios altos
-        'https://images.unsplash.com/photo-1565514020176-dbf227747046?q=80&w=2070&auto=format&fit=crop', // Finanzas / Gráficos
-        'https://images.unsplash.com/photo-1556742049-0cfed4f7a07d?q=80&w=2070&auto=format&fit=crop', // Pago con tarjeta
-        'https://images.unsplash.com/photo-1601597111158-2fceff292cdc?q=80&w=2070&auto=format&fit=crop'  // Banco moderno
+        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=2000&auto=format&fit=crop', // Golden Gate
+        'https://images.unsplash.com/photo-1540651810471-569907e18e90?q=80&w=2000&auto=format&fit=crop', // Hollywood Sign
+        'https://images.unsplash.com/photo-1534050359320-02900022671e?q=80&w=2000&auto=format&fit=crop', // Santa Monica
+        'https://images.unsplash.com/photo-1532274402911-5a369e4c4bb5?q=80&w=2000&auto=format&fit=crop', // Yosemite
+        'https://images.unsplash.com/photo-1449516428743-27ad2b35bb5c?q=80&w=2000&auto=format&fit=crop'  // Highway 1
     ];
 
     useEffect(() => {
