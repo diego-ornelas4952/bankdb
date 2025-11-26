@@ -162,4 +162,66 @@ router.post('/create', async (req, res) => {
     }
 });
 
+// Eliminar cuenta (solo si saldo es 0 o no hay deuda en crédito)
+router.delete('/:acc_id', async (req, res) => {
+    const { acc_id } = req.params;
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        const [accounts] = await connection.query('SELECT * FROM account WHERE acc_id = ?', [acc_id]);
+        if (accounts.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: "Account not found" });
+        }
+        const account = accounts[0];
+
+        if (account.acc_type === 'Credit') {
+            // Para cuentas de crédito, verificamos que no haya deuda
+            // Deuda = Retiros - Depósitos
+            const [rows] = await connection.query(`
+                SELECT 
+                    (IFNULL((SELECT SUM(amount) FROM transactions WHERE acc_id = ? AND trn_type = 'WITHDRAWAL'), 0) - 
+                     IFNULL((SELECT SUM(amount) FROM transactions WHERE acc_id = ? AND trn_type = 'DEPOSIT'), 0)) as debt
+            `, [acc_id, acc_id]);
+
+            const debt = parseFloat(rows[0].debt);
+            // Usamos una pequeña tolerancia por errores de punto flotante
+            if (debt > 0.01) {
+                await connection.rollback();
+                return res.status(400).json({ message: `Cannot delete credit account with outstanding debt of $${debt.toFixed(2)}` });
+            }
+
+            // Si se borra una cuenta de crédito, restauramos la solicitud a 'Pending' para que puedan volver a crearla si lo desean (útil para pruebas)
+            await connection.query(`
+                UPDATE card_requests 
+                SET status = 'Pending' 
+                WHERE client_id = ? AND status = 'Approved' 
+                ORDER BY request_date DESC LIMIT 1
+            `, [account.client_id]);
+        } else {
+            // Para cuentas normales, saldo debe ser 0
+            if (Math.abs(parseFloat(account.balance)) > 0.01) {
+                await connection.rollback();
+                return res.status(400).json({ message: "Cannot delete account with funds. Please empty the account first." });
+            }
+        }
+
+        // Eliminar datos relacionados
+        await connection.query('DELETE FROM transactions WHERE acc_id = ?', [acc_id]);
+        await connection.query('DELETE FROM card WHERE acc_id = ?', [acc_id]);
+        await connection.query('DELETE FROM account WHERE acc_id = ?', [acc_id]);
+
+        await connection.commit();
+        res.json({ success: true, message: "Account deleted successfully" });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error("Error deleting account:", error);
+        res.status(500).json({ error: "Error deleting account" });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
 module.exports = router;

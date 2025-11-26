@@ -37,4 +37,16 @@ router.get('/user/:client_id', async (req, res) => {
     }
 });
 
+// Cancelar seguro
+router.delete('/:ins_id', async (req, res) => {
+    const { ins_id } = req.params;
+    try {
+        await db.query('DELETE FROM insurance WHERE ins_id = ?', [ins_id]);
+        res.json({ success: true, message: "Insurance cancelled successfully" });
+    } catch (error) {
+        console.error("Error cancelling insurance:", error);
+        res.status(500).json({ error: "Error cancelling insurance" });
+    }
+});
+
 module.exports = router;

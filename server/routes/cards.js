@@ -75,6 +75,17 @@ router.get('/requests', async (req, res) => {
     }
 });
 
+// Get client requests
+router.get('/requests/client/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [rows] = await db.query('SELECT * FROM card_requests WHERE client_id = ?', [id]);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Approve card request (Admin)
 router.post('/approve/:id', async (req, res) => {
     const { id } = req.params;
@@ -127,6 +138,18 @@ router.post('/approve/:id', async (req, res) => {
         res.status(500).json({ error: error.message });
     } finally {
         if (connection) connection.release();
+    }
+});
+
+// Delete card
+router.delete('/:card_num', async (req, res) => {
+    const { card_num } = req.params;
+    try {
+        await db.query('DELETE FROM card WHERE card_num = ?', [card_num]);
+        res.json({ success: true, message: "Card deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting card:", error);
+        res.status(500).json({ error: "Error deleting card" });
     }
 });
 

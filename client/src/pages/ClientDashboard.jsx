@@ -6,6 +6,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
     const [insurances, setInsurances] = useState([]);
     const [loans, setLoans] = useState([]);
     const [cards, setCards] = useState([]);
+    const [cardRequests, setCardRequests] = useState([]);
     const [accSelected, setAccSelection] = useState(null);
 
     // Estados para Modals y Menú
@@ -143,6 +144,12 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                 .then(res => res.json())
                 .then(data => setCards(data))
                 .catch(err => console.error("Error loading cards:", err));
+
+            // Cargar solicitudes de tarjetas
+            fetch(`http://localhost:3000/api/cards/requests/client/${user.client_id}`)
+                .then(res => res.json())
+                .then(data => setCardRequests(data))
+                .catch(err => console.error("Error loading card requests:", err));
         }
     };
 
@@ -168,9 +175,11 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
         <div className="min-h-screen bg-gray-50">
             {/* Barra Superior */}
             <nav className="bg-blue-900 text-white p-4 flex justify-between items-center shadow-lg relative z-20">
-                <div>
-                    <h1 className="text-2xl font-bold">DB Bank</h1>
-                    <p className="text-sm opacity-80">Welcome, {user?.name}</p>
+                <div className="flex items-center gap-3">
+                    <img src="/dbbank-logo.png" alt="DB Bank" className="h-12 object-contain" />
+                    <div>
+                        <p className="text-sm opacity-80">Welcome, {user?.name}</p>
+                    </div>
                 </div>
 
                 {/* Menú Desplegable */}
@@ -245,11 +254,52 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                             <div
                                 key={cuenta.acc_id}
                                 onClick={() => setAccSelection(cuenta)}
-                                className={`min-w-[300px] p-6 rounded-xl shadow-md cursor-pointer transition transform hover:scale-105 border-l-4 ${accSelected?.acc_id === cuenta.acc_id
+                                className={`min-w-[300px] p-6 rounded-xl shadow-md cursor-pointer transition transform hover:scale-105 border-l-4 relative ${accSelected?.acc_id === cuenta.acc_id
                                     ? 'bg-white border-blue-500 ring-2 ring-blue-100'
                                     : 'bg-white border-transparent opacity-80'
                                     }`}
                             >
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+
+                                        if (cuenta.acc_type === 'Credit') {
+                                            // Check debt from loans list
+                                            const creditInfo = loans.find(l => l.acc_id === cuenta.acc_id && l.isCreditCard);
+                                            // If creditInfo is not found, it might mean no debt or data not loaded, let backend handle it.
+                                            // But if found and debt > 0, block it.
+                                            if (creditInfo && creditInfo.cap_balance > 0.01) {
+                                                alert(`Account must have no debt to be deleted. Current debt: $${creditInfo.cap_balance}`);
+                                                return;
+                                            }
+                                        } else {
+                                            if (parseFloat(cuenta.balance) !== 0) {
+                                                alert("Account must have 0 funds to be deleted.");
+                                                return;
+                                            }
+                                        }
+
+                                        if (!confirm("Are you sure you want to delete this account?")) return;
+
+                                        fetch(`http://localhost:3000/api/accounts/${cuenta.acc_id}`, { method: 'DELETE' })
+                                            .then(res => res.json())
+                                            .then(data => {
+                                                if (data.success) {
+                                                    alert(data.message);
+                                                    refreshData();
+                                                } else {
+                                                    alert(data.message || data.error);
+                                                }
+                                            })
+                                            .catch(err => alert("Error: " + err.message));
+                                    }}
+                                    className="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 transition"
+                                    title="Delete Account"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
                                 <p className="text-gray-500 text-sm uppercase font-bold tracking-wider">{cuenta.acc_type}</p>
                                 <p className="text-3xl font-bold text-gray-800 my-2">${cuenta.balance}</p>
                                 <p className="text-gray-400 text-xs">Account: ****{cuenta.acc_id}</p>
@@ -306,6 +356,28 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                 </svg>
                                             )}
                                         </button>
+                                        <button
+                                            onClick={() => {
+                                                if (!confirm("Are you sure you want to delete this card?")) return;
+                                                fetch(`http://localhost:3000/api/cards/${card.card_num}`, { method: 'DELETE' })
+                                                    .then(res => res.json())
+                                                    .then(data => {
+                                                        if (data.success) {
+                                                            alert(data.message);
+                                                            refreshData();
+                                                        } else {
+                                                            alert(data.message || data.error);
+                                                        }
+                                                    })
+                                                    .catch(err => alert("Error: " + err.message));
+                                            }}
+                                            className="text-red-300 hover:text-red-500 focus:outline-none transition ml-2"
+                                            title="Delete Card"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
                                     </div>
 
                                     <p className="font-mono text-lg text-gray-800 tracking-wider mb-1">
@@ -337,7 +409,31 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                         <p className="font-bold text-gray-800">{seguro.ins_type}</p>
                                         <p className="text-xs text-gray-500">Beneficiary: {seguro.beneficiary}</p>
                                     </div>
-                                    <span className="text-green-600 font-bold text-sm">${seguro.premium}</span>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-green-600 font-bold text-sm">${seguro.premium}</span>
+                                        <button
+                                            onClick={() => {
+                                                if (!confirm("Are you sure you want to cancel this insurance policy?")) return;
+                                                fetch(`http://localhost:3000/api/insurance/${seguro.ins_id}`, { method: 'DELETE' })
+                                                    .then(res => res.json())
+                                                    .then(data => {
+                                                        if (data.success) {
+                                                            alert(data.message);
+                                                            refreshData();
+                                                        } else {
+                                                            alert(data.message || data.error);
+                                                        }
+                                                    })
+                                                    .catch(err => alert("Error: " + err.message));
+                                            }}
+                                            className="text-red-300 hover:text-red-500 transition"
+                                            title="Cancel Insurance"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                             {insurances.length === 0 && (
@@ -909,6 +1005,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                         setIsInsuranceModalOpen(false);
                                                         setAnnualPremium('');
                                                         setBeneficiaryInsurance('');
+                                                        refreshData();
                                                     }
                                                 })
                                                 .catch(err => alert("Error: " + err.message));
@@ -976,27 +1073,67 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                             <div className="border p-4 rounded-lg bg-gray-50">
                                 <h3 className="font-bold text-gray-700 mb-2">Request Credit Card</h3>
                                 <p className="text-sm text-gray-500 mb-3">Submit a request for a credit card. An executive will review your application and assign a credit limit.</p>
-                                <button
-                                    onClick={() => {
-                                        fetch('http://localhost:3000/api/cards/request-credit', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ client_id: user.client_id })
-                                        })
-                                            .then(res => res.json())
-                                            .then(data => {
-                                                if (data.success) {
-                                                    alert(data.message);
-                                                } else {
-                                                    alert(data.message || data.error || "Unknown error occurred");
-                                                }
+
+                                {cardRequests.filter(r => r.status === 'Pending').length > 0 ? (
+                                    <div className="bg-yellow-50 border border-yellow-200 p-3 rounded mb-3">
+                                        <p className="text-sm text-yellow-800 font-bold mb-2">You have a pending request!</p>
+                                        {cardRequests.filter(r => r.status === 'Pending').map(req => (
+                                            <div key={req.request_id} className="flex justify-between items-center bg-white p-2 rounded border border-yellow-100">
+                                                <span className="text-xs text-gray-500">Req #{req.request_id} - {new Date(req.request_date).toLocaleDateString()}</span>
+                                                <button
+                                                    onClick={() => {
+                                                        // Simular aprobación automática con límite predefinido
+                                                        const defaultLimit = 50000;
+
+                                                        if (!confirm(`Activate your Credit Card with a pre-approved limit of $${defaultLimit}?`)) return;
+
+                                                        fetch(`http://localhost:3000/api/cards/approve/${req.request_id}`, {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({ credit_limit: defaultLimit })
+                                                        })
+                                                            .then(res => res.json())
+                                                            .then(data => {
+                                                                if (data.success) {
+                                                                    alert("Success! Your credit card is now active.");
+                                                                    refreshData();
+                                                                } else {
+                                                                    alert(data.error || data.message);
+                                                                }
+                                                            })
+                                                            .catch(err => alert("Error: " + err.message));
+                                                    }}
+                                                    className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded hover:bg-green-700"
+                                                >
+                                                    Activate Card
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            fetch('http://localhost:3000/api/cards/request-credit', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ client_id: user.client_id })
                                             })
-                                            .catch(err => alert("Network error: " + err.message));
-                                    }}
-                                    className="w-full bg-purple-600 text-white font-bold py-2 rounded hover:bg-purple-700"
-                                >
-                                    Request Credit Card
-                                </button>
+                                                .then(res => res.json())
+                                                .then(data => {
+                                                    if (data.success) {
+                                                        alert(data.message);
+                                                        refreshData();
+                                                    } else {
+                                                        alert(data.message || data.error || "Unknown error occurred");
+                                                    }
+                                                })
+                                                .catch(err => alert("Network error: " + err.message));
+                                        }}
+                                        className="w-full bg-purple-600 text-white font-bold py-2 rounded hover:bg-purple-700"
+                                    >
+                                        Request Credit Card
+                                    </button>
+                                )}
                             </div>
                         </div>
 

@@ -62,6 +62,9 @@ export default function Login({ onLogin, onRegister }) {
             <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 p-8">
                 <div className="max-w-md w-full">
                     <div className="text-center mb-10">
+                        <div className="bg-blue-900 p-3 rounded-xl inline-block mb-6 shadow-lg">
+                            <img src="/dbbank-logo.png" alt="DB Bank" className="h-12 w-auto object-contain" />
+                        </div>
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back!</h2>
                         <p className="text-gray-500">Enter your credentials to access</p>
                     </div>
