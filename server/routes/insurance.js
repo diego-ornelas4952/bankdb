@@ -4,19 +4,25 @@ const db = require('../config/db');
 
 // Contratar un nuevo seguro
 router.post('/contract', async (req, res) => {
-    const { client_id, ins_type, premium, beneficiary } = req.body;
+    const { client_id, ins_type, premium, beneficiary, duration } = req.body;
 
-    if (!client_id || !ins_type || !premium || !beneficiary) {
+    if (!client_id || !ins_type || !premium || !beneficiary || !duration) {
         return res.status(400).json({ message: "Missing required data" });
     }
 
     try {
+        // Check limit (Max 3 insurances)
+        const [existing] = await db.query('SELECT COUNT(*) as count FROM insurance WHERE client_id = ?', [client_id]);
+        if (existing[0].count >= 3) {
+            return res.status(400).json({ message: "Maximum insurance limit reached (3 policies)" });
+        }
+
         // Calculate opening commission (e.g. 5% of the premium)
         const opening_comm = parseFloat(premium) * 0.05;
 
         await db.query(
-            'INSERT INTO insurance (client_id, ins_type, premium, beneficiary, opening_comm) VALUES (?, ?, ?, ?, ?)',
-            [client_id, ins_type, premium, beneficiary, opening_comm]
+            'INSERT INTO insurance (client_id, ins_type, premium, beneficiary, opening_comm, duration_months) VALUES (?, ?, ?, ?, ?, ?)',
+            [client_id, ins_type, premium, beneficiary, opening_comm, duration]
         );
 
         res.json({ success: true, message: "Insurance contract successfully" });

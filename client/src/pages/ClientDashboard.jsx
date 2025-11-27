@@ -15,6 +15,8 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
     const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
     const [isCardsModalOpen, setIsCardsModalOpen] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
     // Estado para Solicitud de Préstamo
     const [loanAmount, setLoanAmount] = useState(0);
@@ -38,12 +40,14 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentAccId, setPaymentAccId] = useState('');
     const [selectedLoanId, setSelectedLoanId] = useState(null);
+    const [isPayCreditCard, setIsPayCreditCard] = useState(false);
 
     // Estado para Contratar Seguro
     const [isInsuranceModalOpen, setIsInsuranceModalOpen] = useState(false);
     const [insuranceType, setInsuranceType] = useState('Life');
     const [annualPremium, setAnnualPremium] = useState('');
     const [beneficiaryInsurance, setBeneficiaryInsurance] = useState('');
+    const [insuranceDuration, setInsuranceDuration] = useState(12);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
     // Estado para Edición de Perfil
@@ -150,6 +154,16 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                 .then(res => res.json())
                 .then(data => setCardRequests(data))
                 .catch(err => console.error("Error loading card requests:", err));
+            fetch(`http://localhost:3000/api/cards/requests/client/${user.client_id}`)
+                .then(res => res.json())
+                .then(data => setCardRequests(data))
+                .catch(err => console.error("Error loading card requests:", err));
+
+            // Cargar notificaciones
+            fetch(`http://localhost:3000/api/notifications/client/${user.client_id}`)
+                .then(res => res.json())
+                .then(data => setNotifications(data))
+                .catch(err => console.error("Error loading notifications:", err));
         }
     };
 
@@ -182,65 +196,139 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                     </div>
                 </div>
 
-                {/* Menú Desplegable */}
-                <div className="relative">
-                    <button
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className="bg-blue-800 hover:bg-blue-700 px-4 py-2 rounded flex items-center gap-2 transition font-bold"
-                    >
-                        <span>Menu</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                    </button>
+                <div className="flex items-center gap-4">
+                    {/* Notificaciones */}
+                    <div className="relative">
+                        <button
+                            onClick={() => {
+                                setIsNotificationsOpen(!isNotificationsOpen);
+                                if (!isNotificationsOpen && notifications.some(n => !n.is_read)) {
+                                    // Marcar todas como leídas al abrir
+                                    fetch(`http://localhost:3000/api/notifications/read-all/${user.client_id}`, { method: 'PUT' })
+                                        .then(() => {
+                                            setNotifications(notifications.map(n => ({ ...n, is_read: 1 })));
+                                        });
+                                }
+                            }}
+                            className="relative p-2 text-blue-200 hover:text-white transition"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            {notifications.filter(n => !n.is_read).length > 0 && (
+                                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                                    {notifications.filter(n => !n.is_read).length}
+                                </span>
+                            )}
+                        </button>
 
-                    {isMenuOpen && (
-                        <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-xl py-2 text-gray-800 z-30">
-                            <button
-                                onClick={() => { setIsLoanModalOpen(true); setIsMenuOpen(false); }}
-                                className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                            >
-                                💰 Loans and Credit
-                            </button>
-                            <button
-                                onClick={() => { setIsTransactionModalOpen(true); setIsMenuOpen(false); }}
-                                className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                            >
-                                🏧 Add Transaction
-                            </button>
-                            <button
-                                onClick={() => { setIsAccountModalOpen(true); setIsMenuOpen(false); }}
-                                className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                            >
-                                💳 Open New Account
-                            </button>
-                            <button
-                                onClick={() => { setIsCardsModalOpen(true); setIsMenuOpen(false); }}
-                                className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                            >
-                                💳 My Cards
-                            </button>
-                            <button
-                                onClick={() => { setIsInsuranceModalOpen(true); setIsMenuOpen(false); }}
-                                className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                            >
-                                🛡️ Contract Insurance
-                            </button>
-                            <button
-                                onClick={() => { setIsProfileModalOpen(true); setIsMenuOpen(false); }}
-                                className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
-                            >
-                                👤 My Profile
-                            </button>
-                            <div className="border-t my-1"></div>
-                            <button
-                                onClick={onLogout}
-                                className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition font-bold"
-                            >
-                                🚪 End Session
-                            </button>
-                        </div>
-                    )}
+                        {isNotificationsOpen && (
+                            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl py-2 z-40 max-h-96 overflow-y-auto border border-gray-100">
+                                <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center">
+                                    <h3 className="font-bold text-gray-700">Notifications</h3>
+                                    {notifications.length > 0 && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (window.confirm("Clear all notifications?")) {
+                                                    fetch(`http://localhost:3000/api/notifications/client/${user.client_id}`, { method: 'DELETE' })
+                                                        .then(() => setNotifications([]));
+                                                }
+                                            }}
+                                            className="text-xs text-red-500 hover:text-red-700 font-bold"
+                                        >
+                                            Clear
+                                        </button>
+                                    )}
+                                </div>
+                                {notifications.length > 0 ? (
+                                    notifications.map(notif => (
+                                        <div key={notif.notification_id} className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 ${!notif.is_read ? 'bg-blue-50' : ''}`}>
+                                            <p className={`text-sm ${notif.type === 'error' ? 'text-red-600' : notif.type === 'success' ? 'text-green-600' : 'text-gray-800'}`}>
+                                                {notif.message}
+                                            </p>
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                {new Date(notif.created_at).toLocaleString()}
+                                            </p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="px-4 py-6 text-center text-gray-400 text-sm">
+                                        No notifications.
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Menú Desplegable */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            className="bg-blue-800 hover:bg-blue-700 px-4 py-2 rounded flex items-center gap-2 transition font-bold"
+                        >
+                            <span>Menu</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+
+                        {isMenuOpen && (
+                            <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-xl py-2 text-gray-800 z-30">
+                                <button
+                                    onClick={() => { setIsLoanModalOpen(true); setIsMenuOpen(false); }}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                                >
+                                    💰 Loans and Credit
+                                </button>
+                                <button
+                                    onClick={() => { setIsTransactionModalOpen(true); setIsMenuOpen(false); }}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                                >
+                                    🏧 Add Transaction
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (accounts.length >= 5) {
+                                            alert("You have reached the maximum limit of 5 accounts.");
+                                            setIsMenuOpen(false);
+                                            return;
+                                        }
+                                        setIsAccountModalOpen(true);
+                                        setIsMenuOpen(false);
+                                    }}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                                >
+                                    💳 Open New Account
+                                </button>
+                                <button
+                                    onClick={() => { setIsCardsModalOpen(true); setIsMenuOpen(false); }}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                                >
+                                    💳 My Cards
+                                </button>
+                                <button
+                                    onClick={() => { setIsInsuranceModalOpen(true); setIsMenuOpen(false); }}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                                >
+                                    🛡️ Contract Insurance
+                                </button>
+                                <button
+                                    onClick={() => { setIsProfileModalOpen(true); setIsMenuOpen(false); }}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
+                                >
+                                    👤 My Profile
+                                </button>
+                                <div className="border-t my-1"></div>
+                                <button
+                                    onClick={onLogout}
+                                    className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition font-bold"
+                                >
+                                    🚪 End Session
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </nav>
 
@@ -263,15 +351,15 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                     onClick={(e) => {
                                         e.stopPropagation();
 
-                                        if (cuenta.acc_type === 'Credit') {
+                                        if (cuenta.acc_type === 'CREDIT') {
                                             // Check debt from loans list
                                             const creditInfo = loans.find(l => l.acc_id === cuenta.acc_id && l.isCreditCard);
-                                            // If creditInfo is not found, it might mean no debt or data not loaded, let backend handle it.
-                                            // But if found and debt > 0, block it.
+                                            // If creditInfo is found and debt > 0, block it.
                                             if (creditInfo && creditInfo.cap_balance > 0.01) {
                                                 alert(`Account must have no debt to be deleted. Current debt: $${creditInfo.cap_balance}`);
                                                 return;
                                             }
+                                            // If not in loans list (paid off) or balance is 0 (unused), allow delete.
                                         } else {
                                             if (parseFloat(cuenta.balance) !== 0) {
                                                 alert("Account must have 0 funds to be deleted.");
@@ -408,6 +496,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                     <div>
                                         <p className="font-bold text-gray-800">{seguro.ins_type}</p>
                                         <p className="text-xs text-gray-500">Beneficiary: {seguro.beneficiary}</p>
+                                        <p className="text-gray-400 text-xs">Duration: {seguro.duration_months} months</p>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-green-600 font-bold text-sm">${seguro.premium}</span>
@@ -542,8 +631,20 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                             placeholder="Amount"
                                                             className="border rounded p-1 text-sm w-1/3"
                                                             value={paymentAmount}
-                                                            onChange={(e) => setPaymentAmount(e.target.value)}
-                                                            onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                if (/^\d*(\.\d{0,2})?$/.test(val)) {
+                                                                    setPaymentAmount(val);
+                                                                }
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', '.'];
+                                                                const isNumber = /^[0-9]$/.test(e.key);
+                                                                const isControl = e.ctrlKey || e.metaKey;
+                                                                if (!isNumber && !allowedKeys.includes(e.key) && !isControl) {
+                                                                    e.preventDefault();
+                                                                }
+                                                            }}
                                                         />
                                                         <select
                                                             className="border rounded p-1 text-sm w-2/3"
@@ -555,7 +656,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                                 .filter(acc => acc.acc_type !== 'Credit') // No pagar con crédito
                                                                 .map(acc => (
                                                                     <option key={acc.acc_id} value={acc.acc_id}>
-                                                                        {acc.acc_type} - ${acc.balance}
+                                                                        {acc.acc_type} - ${acc.balance} ({acc.currency})
                                                                     </option>
                                                                 ))}
                                                         </select>
@@ -564,54 +665,31 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                         onClick={() => {
                                                             if (!paymentAmount || !paymentAccId) return alert("Please fill all fields");
 
-                                                            if (loan.isCreditCard) {
-                                                                // Lógica para pagar tarjeta de crédito (Depósito a la cuenta de crédito)
-                                                                // 1. Retiro de la cuenta origen
-                                                                // 2. Depósito a la cuenta destino (la de crédito)
-
-                                                                // Hacemos una transferencia normal
-                                                                fetch('http://localhost:3000/api/accounts/transfer', {
-                                                                    method: 'POST',
-                                                                    headers: { 'Content-Type': 'application/json' },
-                                                                    body: JSON.stringify({
-                                                                        origin_id: paymentAccId,
-                                                                        dest_id: loan.acc_id,
-                                                                        amount: paymentAmount
-                                                                    })
+                                                            fetch(`http://localhost:3000/api/loans/pay/${loan.loan_id}`, {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({
+                                                                    amount: paymentAmount,
+                                                                    acc_id: paymentAccId,
+                                                                    isCreditCard: loan.isCreditCard
                                                                 })
-                                                                    .then(res => res.json())
-                                                                    .then(data => {
-                                                                        if (data.success) {
-                                                                            alert("Credit Card payment successful!");
-                                                                            refreshData();
-                                                                            setSelectedLoanId(null);
-                                                                        } else {
-                                                                            alert(data.message || "Error processing payment");
-                                                                        }
-                                                                    })
-                                                                    .catch(err => alert(err.message));
-
-                                                            } else {
-                                                                // Lógica para pagar préstamo normal
-                                                                fetch(`http://localhost:3000/api/loans/pay/${loan.loan_id}`, {
-                                                                    method: 'POST',
-                                                                    headers: { 'Content-Type': 'application/json' },
-                                                                    body: JSON.stringify({ amount: paymentAmount, acc_id: paymentAccId })
+                                                            })
+                                                                .then(res => {
+                                                                    if (!res.ok) return res.json().then(err => { throw new Error(err.error || err.message) });
+                                                                    return res.json();
                                                                 })
-                                                                    .then(res => res.json())
-                                                                    .then(data => {
-                                                                        if (data.success) {
-                                                                            alert(data.message);
-                                                                            refreshData();
-                                                                            setSelectedLoanId(null);
-                                                                        } else {
-                                                                            alert(data.error || data.message);
-                                                                        }
-                                                                    })
-                                                                    .catch(err => alert(err.message));
-                                                            }
+                                                                .then(data => {
+                                                                    alert(data.message);
+                                                                    if (data.success) {
+                                                                        refreshData();
+                                                                        setSelectedLoanId(null);
+                                                                        setPaymentAmount('');
+                                                                        setPaymentAccId('');
+                                                                    }
+                                                                })
+                                                                .catch(err => alert("Error: " + err.message));
                                                         }}
-                                                        className={`w-full text-white text-xs font-bold py-1 rounded ${loan.isCreditCard ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                                        className="bg-green-600 text-white font-bold px-4 py-1 rounded text-sm hover:bg-green-700 w-full"
                                                     >
                                                         Confirm Payment
                                                     </button>
@@ -634,8 +712,20 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                         type="number"
                                         className="border rounded p-2 w-full"
                                         placeholder="Ej. 5000"
-                                        onChange={(e) => setLoanAmount(e.target.value)}
-                                        onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (/^\d*(\.\d{0,2})?$/.test(val)) {
+                                                setLoanAmount(val);
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', '.'];
+                                            const isNumber = /^[0-9]$/.test(e.key);
+                                            const isControl = e.ctrlKey || e.metaKey;
+                                            if (!isNumber && !allowedKeys.includes(e.key) && !isControl) {
+                                                e.preventDefault();
+                                            }
+                                        }}
                                     />
                                 </div>
                                 <div>
@@ -654,6 +744,9 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                     <button onClick={() => setIsLoanModalOpen(false)} className="px-4 py-2 text-gray-500 font-bold">Cancel</button>
                                     <button
                                         onClick={() => {
+                                            if (loanAmount > 50000) {
+                                                return alert("The maximum loan amount is $50,000");
+                                            }
                                             fetch('http://localhost:3000/api/loans/request', {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
@@ -677,89 +770,105 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                     </div>
                 </div>
             )}
-
-            {/* Modal: Make a Transaction */}
-            {isTransactionModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Make a Transaction</h2>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-gray-700 text-sm font-bold mb-2">Account</label>
-                                <select
-                                    className="border rounded p-2 w-full"
-                                    value={idAccTrn}
-                                    onChange={(e) => setIdAccTrn(e.target.value)}
-                                >
-                                    {accounts.map(c => (
-                                        <option key={c.acc_id} value={c.acc_id}>
-                                            {c.acc_type} - ${c.balance} ({c.currency})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex gap-4">
-                                <div className="w-1/2">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">Type</label>
+            {
+                isTransactionModalOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4">Make a Transaction</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-gray-700 text-sm font-bold mb-2">Account</label>
                                     <select
                                         className="border rounded p-2 w-full"
-                                        value={transactionType}
-                                        onChange={(e) => setTransactionType(e.target.value)}
+                                        value={idAccTrn}
+                                        onChange={(e) => setIdAccTrn(e.target.value)}
                                     >
-                                        <option value="DEPOSIT">Deposit (+)</option>
-                                        <option value="WITHDRAW">Withdraw (-)</option>
+                                        {accounts.map(c => (
+                                            <option key={c.acc_id} value={c.acc_id}>
+                                                {c.acc_type} - ${c.balance} ({c.currency})
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
-                                <div className="w-1/2">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">Amount</label>
+                                <div className="flex gap-4">
+                                    <div className="w-1/2">
+                                        <label className="block text-gray-700 text-sm font-bold mb-2">Type</label>
+                                        <select
+                                            className="border rounded p-2 w-full"
+                                            value={transactionType}
+                                            onChange={(e) => setTransactionType(e.target.value)}
+                                        >
+                                            <option value="DEPOSIT">Deposit (+)</option>
+                                            <option value="WITHDRAWAL">Withdraw (-)</option>
+                                        </select>
+                                    </div>
+                                    <div className="w-1/2">
+                                        <label className="block text-gray-700 text-sm font-bold mb-2">Amount</label>
+                                        <input
+                                            type="number"
+                                            className="border rounded p-2 w-full"
+                                            placeholder="0.00"
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (/^\d*(\.\d{0,2})?$/.test(val)) {
+                                                    setTransactionAmount(val);
+                                                }
+                                            }}
+                                            onKeyDown={(e) => {
+                                                const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', '.'];
+                                                const isNumber = /^[0-9]$/.test(e.key);
+                                                const isControl = e.ctrlKey || e.metaKey;
+                                                if (!isNumber && !allowedKeys.includes(e.key) && !isControl) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-gray-700 text-sm font-bold mb-2">Description</label>
                                     <input
-                                        type="number"
+                                        type="text"
                                         className="border rounded p-2 w-full"
-                                        placeholder="0.00"
-                                        onChange={(e) => setTransactionAmount(e.target.value)}
-                                        onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                                        placeholder="Purchase..."
+                                        onChange={(e) => setDescTrn(e.target.value)}
                                     />
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-gray-700 text-sm font-bold mb-2">Description</label>
-                                <input
-                                    type="text"
-                                    className="border rounded p-2 w-full"
-                                    placeholder="Purchase..."
-                                    onChange={(e) => setDescTrn(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <button onClick={() => setIsTransactionModalOpen(false)} className="px-4 py-2 text-gray-500 font-bold">Cancel</button>
-                                <button
-                                    onClick={() => {
-                                        if (!idAccTrn) return alert("Select an account");
-                                        fetch('http://localhost:3000/api/accounts/transaction', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ acc_id: idAccTrn, type: transactionType, amount: transactionAmount, description: descTrn })
-                                        })
-                                            .then(res => {
-                                                if (!res.ok) return res.json().then(err => { throw new Error(err.message) });
-                                                return res.json();
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button onClick={() => setIsTransactionModalOpen(false)} className="px-4 py-2 text-gray-500 font-bold">Cancel</button>
+                                    <button
+                                        onClick={() => {
+                                            if (!idAccTrn) return alert("Select an account");
+
+                                            if (transactionType === 'DEPOSIT' && parseFloat(transactionAmount) > 10000) {
+                                                return alert("The maximum deposit amount per operation is $10,000");
+                                            }
+
+                                            fetch('http://localhost:3000/api/accounts/transaction', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ acc_id: idAccTrn, type: transactionType, amount: transactionAmount, description: descTrn })
                                             })
-                                            .then(data => {
-                                                alert(data.message);
-                                                setIsTransactionModalOpen(false);
-                                                refreshData();
-                                            })
-                                            .catch(err => alert("Error in transaction: " + err.message));
-                                    }}
-                                    className="bg-purple-600 text-white font-bold px-4 py-2 rounded hover:bg-purple-700"
-                                >
-                                    Apply
-                                </button>
+                                                .then(res => {
+                                                    if (!res.ok) return res.json().then(err => { throw new Error(err.message) });
+                                                    return res.json();
+                                                })
+                                                .then(data => {
+                                                    alert(data.message);
+                                                    setIsTransactionModalOpen(false);
+                                                    refreshData();
+                                                })
+                                                .catch(err => alert("Error in transaction: " + err.message));
+                                        }}
+                                        className="bg-purple-600 text-white font-bold px-4 py-2 rounded hover:bg-purple-700"
+                                    >
+                                        Apply
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )
+                )
             }
 
             {/* Modal: Abrir Cuenta */}
@@ -833,7 +942,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                     <button
                                         onClick={() => {
                                             setIsEditingProfile(true);
-                                            setEditName(user.name);
+                                            setEditName(user.first_name);
                                             setEditLastname(user.lastname);
                                             setEditLastname2(user.lastname2 || '');
                                             setEditPhone(user.phone || '');
@@ -973,8 +1082,20 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                         className="border rounded p-2 w-full"
                                         placeholder="Ej. 5000"
                                         value={annualPremium}
-                                        onChange={(e) => setAnnualPremium(e.target.value)}
-                                        onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (/^\d*(\.\d{0,2})?$/.test(val)) {
+                                                setAnnualPremium(val);
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', '.'];
+                                            const isNumber = /^[0-9]$/.test(e.key);
+                                            const isControl = e.ctrlKey || e.metaKey;
+                                            if (!isNumber && !allowedKeys.includes(e.key) && !isControl) {
+                                                e.preventDefault();
+                                            }
+                                        }}
                                     />
                                 </div>
                                 <div>
@@ -987,11 +1108,32 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                         onChange={(e) => setBeneficiaryInsurance(e.target.value)}
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-gray-700 text-sm font-bold mb-2">Duration (Months)</label>
+                                    <select
+                                        className="border rounded p-2 w-full"
+                                        value={insuranceDuration}
+                                        onChange={(e) => setInsuranceDuration(e.target.value)}
+                                    >
+                                        <option value="12">12 Months (1 Year)</option>
+                                        <option value="24">24 Months (2 Years)</option>
+                                        <option value="36">36 Months (3 Years)</option>
+                                        <option value="48">48 Months (4 Years)</option>
+                                        <option value="60">60 Months (5 Years)</option>
+                                    </select>
+                                </div>
+
                                 <div className="flex justify-end gap-3 mt-6">
                                     <button onClick={() => setIsInsuranceModalOpen(false)} className="px-4 py-2 text-gray-500 font-bold">Cancel</button>
                                     <button
                                         onClick={() => {
                                             if (!annualPremium || !beneficiaryInsurance) return alert("All fields are required");
+
+                                            // Validate beneficiary full name (at least 2 words)
+                                            if (beneficiaryInsurance.trim().split(/\s+/).length < 2) {
+                                                return alert("Please enter the full name of the beneficiary (Name and Lastname).");
+                                            }
+
                                             fetch('http://localhost:3000/api/insurance/contract', {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
@@ -999,7 +1141,8 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                     client_id: user.client_id,
                                                     ins_type: insuranceType,
                                                     premium: annualPremium,
-                                                    beneficiary: beneficiaryInsurance
+                                                    beneficiary: beneficiaryInsurance,
+                                                    duration: insuranceDuration
                                                 })
                                             })
                                                 .then(res => res.json())
@@ -1018,141 +1161,144 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                     >
                                         Contract
                                     </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                                </div >
+                            </div >
+                        </div >
+                    </div >
+                )
+            }
 
             {/* Modal: Cards */}
-            {isCardsModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Manage Cards</h2>
+            {
+                isCardsModalOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4">Manage Cards</h2>
 
-                        <div className="space-y-6">
-                            {/* Create Debit Card */}
-                            <div className="border p-4 rounded-lg bg-gray-50">
-                                <h3 className="font-bold text-gray-700 mb-2">Create Debit Card</h3>
-                                <p className="text-sm text-gray-500 mb-3">Select an account to link your new debit card.</p>
-                                <select
-                                    className="border rounded p-2 w-full mb-3"
-                                    value={newCardAccId}
-                                    onChange={(e) => setNewCardAccId(e.target.value)}
-                                >
-                                    <option value="">Select Account</option>
-                                    {accounts.filter(acc => acc.acc_type !== 'CREDIT').map(acc => (
-                                        <option key={acc.acc_id} value={acc.acc_id}>
-                                            {acc.acc_type} - ${acc.balance} ({acc.currency})
-                                        </option>
-                                    ))}
-                                </select>
-                                <button
-                                    onClick={() => {
-                                        if (!newCardAccId) return alert("Select an account");
-                                        fetch('http://localhost:3000/api/cards/create', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ acc_id: newCardAccId })
-                                        })
-                                            .then(res => res.json())
-                                            .then(data => {
-                                                if (data.success) {
-                                                    alert(data.message);
-                                                    refreshData();
-                                                    setNewCardAccId('');
-                                                } else {
-                                                    alert(data.message || data.error || "Unknown error occurred");
-                                                }
-                                            })
-                                            .catch(err => alert("Network error: " + err.message));
-                                    }}
-                                    className="w-full bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700"
-                                >
-                                    Create Debit Card
-                                </button>
-                            </div>
-
-                            {/* Request Credit Card */}
-                            <div className="border p-4 rounded-lg bg-gray-50">
-                                <h3 className="font-bold text-gray-700 mb-2">Request Credit Card</h3>
-                                <p className="text-sm text-gray-500 mb-3">Submit a request for a credit card. An executive will review your application and assign a credit limit.</p>
-
-                                {cardRequests.filter(r => r.status === 'Pending').length > 0 ? (
-                                    <div className="bg-yellow-50 border border-yellow-200 p-3 rounded mb-3">
-                                        <p className="text-sm text-yellow-800 font-bold mb-2">You have a pending request!</p>
-                                        {cardRequests.filter(r => r.status === 'Pending').map(req => (
-                                            <div key={req.request_id} className="flex justify-between items-center bg-white p-2 rounded border border-yellow-100">
-                                                <span className="text-xs text-gray-500">Req #{req.request_id} - {new Date(req.request_date).toLocaleDateString()}</span>
-                                                <button
-                                                    onClick={() => {
-                                                        // Simular aprobación automática con límite predefinido
-                                                        const defaultLimit = 50000;
-
-                                                        if (!confirm(`Activate your Credit Card with a pre-approved limit of $${defaultLimit}?`)) return;
-
-                                                        fetch(`http://localhost:3000/api/cards/approve/${req.request_id}`, {
-                                                            method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ credit_limit: defaultLimit })
-                                                        })
-                                                            .then(res => res.json())
-                                                            .then(data => {
-                                                                if (data.success) {
-                                                                    alert("Success! Your credit card is now active.");
-                                                                    refreshData();
-                                                                } else {
-                                                                    alert(data.error || data.message);
-                                                                }
-                                                            })
-                                                            .catch(err => alert("Error: " + err.message));
-                                                    }}
-                                                    className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded hover:bg-green-700"
-                                                >
-                                                    Activate Card
-                                                </button>
-                                            </div>
+                            <div className="space-y-6">
+                                {/* Create Debit Card */}
+                                <div className="border p-4 rounded-lg bg-gray-50">
+                                    <h3 className="font-bold text-gray-700 mb-2">Create Debit Card</h3>
+                                    <p className="text-sm text-gray-500 mb-3">Select an account to link your new debit card.</p>
+                                    <select
+                                        className="border rounded p-2 w-full mb-3"
+                                        value={newCardAccId}
+                                        onChange={(e) => setNewCardAccId(e.target.value)}
+                                    >
+                                        <option value="">Select Account</option>
+                                        {accounts.filter(acc => acc.acc_type !== 'CREDIT').map(acc => (
+                                            <option key={acc.acc_id} value={acc.acc_id}>
+                                                {acc.acc_type} - ${acc.balance} ({acc.currency})
+                                            </option>
                                         ))}
-                                    </div>
-                                ) : (
+                                    </select>
                                     <button
                                         onClick={() => {
-                                            fetch('http://localhost:3000/api/cards/request-credit', {
+                                            if (!newCardAccId) return alert("Select an account");
+                                            fetch('http://localhost:3000/api/cards/create', {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ client_id: user.client_id })
+                                                body: JSON.stringify({ acc_id: newCardAccId })
                                             })
                                                 .then(res => res.json())
                                                 .then(data => {
                                                     if (data.success) {
                                                         alert(data.message);
                                                         refreshData();
+                                                        setNewCardAccId('');
                                                     } else {
                                                         alert(data.message || data.error || "Unknown error occurred");
                                                     }
                                                 })
                                                 .catch(err => alert("Network error: " + err.message));
                                         }}
-                                        className="w-full bg-purple-600 text-white font-bold py-2 rounded hover:bg-purple-700"
+                                        className="w-full bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700"
                                     >
-                                        Request Credit Card
+                                        Create Debit Card
                                     </button>
-                                )}
+                                </div>
+
+                                {/* Request Credit Card */}
+                                <div className="border p-4 rounded-lg bg-gray-50">
+                                    <h3 className="font-bold text-gray-700 mb-2">Request Credit Card</h3>
+                                    <p className="text-sm text-gray-500 mb-3">Submit a request for a credit card. An executive will review your application and assign a credit limit.</p>
+
+                                    {cardRequests.filter(r => r.status === 'Pending').length > 0 ? (
+                                        <div className="bg-yellow-50 border border-yellow-200 p-3 rounded mb-3">
+                                            <p className="text-sm text-yellow-800 font-bold mb-2">You have a pending request!</p>
+                                            {cardRequests.filter(r => r.status === 'Pending').map(req => (
+                                                <div key={req.request_id} className="flex justify-between items-center bg-white p-2 rounded border border-yellow-100">
+                                                    <span className="text-xs text-gray-500">Req #{req.request_id} - {new Date(req.request_date).toLocaleDateString()}</span>
+                                                    <button
+                                                        onClick={() => {
+                                                            // Simular aprobación automática con límite predefinido
+                                                            const defaultLimit = 50000;
+
+                                                            if (!confirm(`Activate your Credit Card with a pre-approved limit of $${defaultLimit}?`)) return;
+
+                                                            fetch(`http://localhost:3000/api/cards/approve/${req.request_id}`, {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({ credit_limit: defaultLimit })
+                                                            })
+                                                                .then(res => res.json())
+                                                                .then(data => {
+                                                                    if (data.success) {
+                                                                        alert("Success! Your credit card is now active.");
+                                                                        refreshData();
+                                                                    } else {
+                                                                        alert(data.error || data.message);
+                                                                    }
+                                                                })
+                                                                .catch(err => alert("Error: " + err.message));
+                                                        }}
+                                                        className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded hover:bg-green-700"
+                                                    >
+                                                        Activate Card
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                fetch('http://localhost:3000/api/cards/request-credit', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ client_id: user.client_id })
+                                                })
+                                                    .then(res => res.json())
+                                                    .then(data => {
+                                                        if (data.success) {
+                                                            alert(data.message);
+                                                            refreshData();
+                                                        } else {
+                                                            alert(data.message || data.error || "Unknown error occurred");
+                                                        }
+                                                    })
+                                                    .catch(err => alert("Network error: " + err.message));
+                                            }}
+                                            className="w-full bg-purple-600 text-white font-bold py-2 rounded hover:bg-purple-700"
+                                        >
+                                            Request Credit Card
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end mt-6">
+                                <button
+                                    onClick={() => setIsCardsModalOpen(false)}
+                                    className="text-gray-500 font-bold px-4 py-2"
+                                >
+                                    Close
+                                </button>
                             </div>
                         </div>
-
-                        <div className="flex justify-end mt-6">
-                            <button
-                                onClick={() => setIsCardsModalOpen(false)}
-                                className="text-gray-500 font-bold px-4 py-2"
-                            >
-                                Close
-                            </button>
-                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
 
     );
 }

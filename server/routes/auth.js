@@ -1,9 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const crypto = require('crypto');
+
+// Helper para hash SHA-256
+function hashPassword(password) {
+    return crypto.createHash('sha256').update(password).digest('hex');
+}
 
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
+    const hashedPassword = hashPassword(password);
 
     try {
         // 1. Primero buscamos en la tabla de EMPLEADOS
@@ -12,7 +19,7 @@ router.post('/login', async (req, res) => {
         // Si el usuario ingresa "Juan", buscaremos en first_name.
         const [employees] = await db.query(
             'SELECT * FROM employees WHERE first_name = ? AND password = ?',
-            [email, password] // Aquí 'email' actúa como nombre de usuario
+            [email, hashedPassword] // Aquí 'email' actúa como nombre de usuario
         );
 
         if (employees.length > 0) {
@@ -27,7 +34,7 @@ router.post('/login', async (req, res) => {
         // 2. If not employee, search in CLIENTS (they have email)
         const [clients] = await db.query(
             'SELECT * FROM clients WHERE email = ? AND password = ?',
-            [email, password]
+            [email, hashedPassword]
         );
 
         if (clients.length > 0) {
@@ -56,9 +63,11 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ success: false, message: 'The email is already registered' });
         }
 
+        const hashedPassword = hashPassword(password);
+
         // Usamos first_name en lugar de name
         const sql = 'INSERT INTO clients (first_name, lastname, lastname2, email, password, address, phone) VALUES (?, ?, ?, ?, ?, ?, ?)';
-        const [result] = await db.query(sql, [name, lastname, lastname2, email, password, address, phone]);
+        const [result] = await db.query(sql, [name, lastname, lastname2, email, hashedPassword, address, phone]);
 
         // Crear cuenta por defecto (Ahorro MXN) -> account_type_id = 1 (SAVINGS)
         const clientId = result.insertId;

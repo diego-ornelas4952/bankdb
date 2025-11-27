@@ -43,6 +43,18 @@ router.post('/create', async (req, res) => {
 router.post('/request-credit', async (req, res) => {
     const { client_id } = req.body;
     try {
+        // Check if user already has a CREDIT account (account_type_id = 3)
+        const [existingAccounts] = await db.query('SELECT * FROM account WHERE client_id = ? AND account_type_id = 3', [client_id]);
+        if (existingAccounts.length > 0) {
+            return res.status(400).json({ message: "You already have an active Credit Card." });
+        }
+
+        // Check if user already has a PENDING request
+        const [pendingRequests] = await db.query("SELECT * FROM card_requests WHERE client_id = ? AND status = 'PENDING'", [client_id]);
+        if (pendingRequests.length > 0) {
+            return res.status(400).json({ message: "You already have a pending Credit Card request." });
+        }
+
         // Create table if not exists (Updated ENUM)
         await db.query(`
             CREATE TABLE IF NOT EXISTS card_requests (
@@ -131,6 +143,12 @@ router.post('/approve/:id', async (req, res) => {
         // 4. Update Request Status
         await connection.query('UPDATE card_requests SET status = ? WHERE request_id = ?', ['APPROVED', id]);
 
+        // 5. Notify Client
+        await connection.query(
+            'INSERT INTO notifications (client_id, message, type) VALUES (?, ?, ?)',
+            [request.client_id, `Your credit card request has been approved with a limit of $${credit_limit}.`, 'success']
+        );
+
         await connection.commit();
         res.json({ success: true, message: 'Credit card approved and created successfully' });
 
@@ -139,6 +157,32 @@ router.post('/approve/:id', async (req, res) => {
         res.status(500).json({ error: error.message });
     } finally {
         if (connection) connection.release();
+    }
+});
+
+// Reject card request
+router.post('/reject/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        // Get client_id before updating
+        const [requests] = await db.query('SELECT client_id FROM card_requests WHERE request_id = ?', [id]);
+        if (requests.length === 0) return res.status(404).json({ message: "Request not found" });
+
+        const [result] = await db.query("UPDATE card_requests SET status = 'REJECTED' WHERE request_id = ? AND status = 'PENDING'", [id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Request not found or already processed" });
+        }
+
+        await db.query(
+            'INSERT INTO notifications (client_id, message, type) VALUES (?, ?, ?)',
+            [requests[0].client_id, `Your credit card request has been rejected.`, 'error']
+        );
+
+        res.json({ success: true, message: "Card request rejected" });
+    } catch (error) {
+        console.error("Error rejecting card request:", error);
+        res.status(500).json({ error: error.message });
     }
 });
 

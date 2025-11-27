@@ -73,7 +73,7 @@ router.post('/transaction', async (req, res) => {
         }
 
         // 3. Verificar fondos para retiro (aplica a todos)
-        if (type === 'WITHDRAW') {
+        if (type === 'WITHDRAWAL') {
             if (currentBalance < txnAmount) {
                 await connection.rollback();
                 return res.status(400).json({ message: "Insufficient funds / Credit limit exceeded" });
@@ -96,7 +96,7 @@ router.post('/transaction', async (req, res) => {
     } catch (error) {
         if (connection) await connection.rollback();
         console.error("Error in transaction:", error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     } finally {
         if (connection) connection.release();
     }
@@ -167,14 +167,19 @@ router.post('/create', async (req, res) => {
         return res.status(400).json({ message: "Missing required data" });
     }
 
-    // Map string type to ID
-    let typeId = 1; // Default Savings
-    if (acc_type === 'Ahorro' || acc_type === 'Savings') typeId = 1;
-    else if (acc_type === 'Inversión' || acc_type === 'Investment') typeId = 2;
-    else if (acc_type === 'Credit' || acc_type === 'Crédito') typeId = 3;
-    else if (acc_type === 'Cheques' || acc_type === 'Checking') typeId = 4;
-
     try {
+        // Check account limit
+        const [existingAccounts] = await db.query('SELECT COUNT(*) as count FROM account WHERE client_id = ?', [client_id]);
+        if (existingAccounts[0].count >= 5) {
+            return res.status(400).json({ message: "Maximum account limit reached (5 accounts)" });
+        }
+
+        let typeId = 1; // Default Savings
+        if (acc_type === 'Ahorro' || acc_type === 'Savings') typeId = 1;
+        else if (acc_type === 'Inversión' || acc_type === 'Investment') typeId = 2;
+        else if (acc_type === 'Credit' || acc_type === 'Crédito') typeId = 3;
+        else if (acc_type === 'Cheques' || acc_type === 'Checking') typeId = 4;
+
         await db.query(
             'INSERT INTO account (client_id, balance, account_type_id, currency, branch_id) VALUES (?, ?, ?, ?, ?)',
             [client_id, 0, typeId, currency, 1]
@@ -201,39 +206,45 @@ router.delete('/:acc_id', async (req, res) => {
         }
         const account = accounts[0];
 
-        // 3 is CREDIT
-        if (account.account_type_id === 3) {
-            // Para cuentas de crédito, verificamos que no haya deuda
-            // Deuda = Retiros - Depósitos
+        // Check if it is a credit account (ID 3)
+        // Use loose equality to handle string/number differences
+        if (account.account_type_id == 3) {
+            // Credit Account Logic
+            // Calculate Debt: Total Withdrawals (Spends) - Total Deposits (Payments)
             const [rows] = await connection.query(`
                 SELECT 
                     (IFNULL((SELECT SUM(amount) FROM transactions WHERE acc_id = ? AND trn_type = 'WITHDRAWAL'), 0) - 
                      IFNULL((SELECT SUM(amount) FROM transactions WHERE acc_id = ? AND trn_type = 'DEPOSIT'), 0)) as debt
             `, [acc_id, acc_id]);
 
-            const debt = parseFloat(rows[0].debt);
-            // Usamos una pequeña tolerancia por errores de punto flotante
+            const debt = parseFloat(rows[0].debt || 0);
+
+            // If debt is positive, they owe money.
             if (debt > 0.01) {
                 await connection.rollback();
                 return res.status(400).json({ message: `Cannot delete credit account with outstanding debt of $${debt.toFixed(2)}` });
             }
 
-            // Si se borra una cuenta de crédito, restauramos la solicitud a 'Pending' para que puedan volver a crearla si lo desean (útil para pruebas)
+            // If debt is 0 or negative (overpaid), we allow deletion.
+
+            // Restore card request to PENDING so they can request again if they want
             await connection.query(`
                 UPDATE card_requests 
                 SET status = 'PENDING' 
                 WHERE client_id = ? AND status = 'APPROVED' 
                 ORDER BY request_date DESC LIMIT 1
             `, [account.client_id]);
+
         } else {
-            // Para cuentas normales, saldo debe ser 0
+            // Savings/Checking/Investment Logic
+            // Balance must be 0
             if (Math.abs(parseFloat(account.balance)) > 0.01) {
                 await connection.rollback();
                 return res.status(400).json({ message: "Cannot delete account with funds. Please empty the account first." });
             }
         }
 
-        // Eliminar datos relacionados
+        // Delete related data
         await connection.query('DELETE FROM transactions WHERE acc_id = ?', [acc_id]);
         await connection.query('DELETE FROM card WHERE acc_id = ?', [acc_id]);
         await connection.query('DELETE FROM account WHERE acc_id = ?', [acc_id]);

@@ -15,6 +15,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/insurance', require('./routes/insurance'));
 app.use('/api/cards', require('./routes/cards'));
 app.use('/api/employees', require('./routes/employees'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 app.get('/', (req, res) => {
     res.send('BankDB Server is running correctly. Please use the client application to interact.');

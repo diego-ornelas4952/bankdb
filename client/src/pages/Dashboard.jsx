@@ -8,8 +8,12 @@ export default function Dashboard({ onLogout }) {
     const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
     const [newEmployee, setNewEmployee] = useState({ name: '', position: '', password: '' });
 
+    const [activeTab, setActiveTab] = useState('loans');
+    const [clientSearch, setClientSearch] = useState('');
+    const [debugError, setDebugError] = useState(''); // Added debugError state
+
     const loadLoans = () => {
-        fetch('http://localhost:3000/api/loans/pending')
+        fetch('http://127.0.0.1:3000/api/loans/pending')
             .then(res => {
                 if (!res.ok) throw new Error('The service is not available');
                 return res.json();
@@ -25,21 +29,46 @@ export default function Dashboard({ onLogout }) {
     };
 
     const loadClients = () => {
-        fetch('http://localhost:3000/api/clients')
-            .then(res => res.json())
-            .then(data => setClients(data))
-            .catch(err => console.error("Error loading clients:", err));
+        const timestamp = new Date().getTime(); // Prevent caching
+        fetch(`http://127.0.0.1:3000/api/clients?t=${timestamp}`)
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                console.log("Clients loaded:", data); // Debug log
+                if (Array.isArray(data)) {
+                    setClients(data);
+                    setDebugError('');
+                } else {
+                    console.error("Clients response is not an array:", data);
+                    setDebugError('Data is not an array: ' + JSON.stringify(data));
+                    setClients([]);
+                }
+            })
+            .catch(err => {
+                console.error("Error loading clients:", err);
+                setDebugError('Fetch error: ' + err.message);
+            });
     };
 
     const loadCardRequests = () => {
-        fetch('http://localhost:3000/api/cards/requests')
+        fetch('http://127.0.0.1:3000/api/cards/requests')
             .then(res => res.json())
-            .then(data => setCardRequests(data))
+            .then(data => {
+                if (Array.isArray(data)) {
+                    setCardRequests(data);
+                } else {
+                    setCardRequests([]);
+                }
+            })
             .catch(err => console.error("Error loading card requests:", err));
     };
 
     const loadEmployees = () => {
-        fetch('http://localhost:3000/api/employees')
+        fetch('http://127.0.0.1:3000/api/employees')
             .then(res => res.json())
             .then(data => setEmployees(data))
             .catch(err => console.error("Error loading employees:", err));
@@ -52,113 +81,14 @@ export default function Dashboard({ onLogout }) {
         loadEmployees();
     }, []);
 
-    const handleApprove = async (id) => {
-        if (!window.confirm("Are you sure you want to approve this loan?")) return;
+    // ... (existing load functions)
 
-        try {
-            const response = await fetch(`http://localhost:3000/api/loans/approve/${id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            });
-
-            if (response.ok) {
-                alert("¡Loan approved!");
-                loadLoans();
-            } else {
-                alert("Error approving loan");
-            }
-        } catch (error) {
-            console.error("Error approving loan:", error);
-        }
-    };
-
-    const handleApproveCard = async (id) => {
-        const limit = prompt("Enter the credit limit for this card (MXN):", "10000");
-        if (!limit) return;
-
-        try {
-            const response = await fetch(`http://localhost:3000/api/cards/approve/${id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ credit_limit: limit })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                alert(data.message);
-                loadCardRequests();
-            } else {
-                alert("Error: " + (data.error || data.message));
-            }
-        } catch (error) {
-            console.error("Error approving card:", error);
-            alert("Error approving card");
-        }
-    };
-
-    const handleDeleteClient = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
-
-        try {
-            const response = await fetch(`http://localhost:3000/api/clients/${id}`, {
-                method: 'DELETE',
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                alert(data.message);
-                loadClients();
-            } else {
-                alert("Error: " + data.error);
-            }
-        } catch (error) {
-            console.error("Error deleting client:", error);
-            alert("Error deleting client");
-        }
-    };
-
-    const handleAddEmployee = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await fetch('http://localhost:3000/api/employees', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newEmployee)
-            });
-            const data = await response.json();
-            if (data.success) {
-                alert(data.message);
-                setIsEmployeeModalOpen(false);
-                setNewEmployee({ name: '', position: '', password: '' });
-                loadEmployees();
-            } else {
-                alert("Error: " + data.message);
-            }
-        } catch (error) {
-            console.error("Error adding employee:", error);
-        }
-    };
-
-    const handleDeleteEmployee = async (id) => {
-        if (!window.confirm("Are you sure you want to remove this employee?")) return;
-        try {
-            const response = await fetch(`http://localhost:3000/api/employees/${id}`, {
-                method: 'DELETE',
-            });
-            const data = await response.json();
-            if (data.success) {
-                alert(data.message);
-                loadEmployees();
-            } else {
-                alert("Error: " + data.error);
-            }
-        } catch (error) {
-            console.error("Error deleting employee:", error);
-        }
-    };
+    // Filter Clients
+    const filteredClients = clients.filter(client =>
+        (client.first_name && client.first_name.toLowerCase().includes(clientSearch.toLowerCase())) ||
+        (client.lastname && client.lastname.toLowerCase().includes(clientSearch.toLowerCase())) ||
+        (client.email && client.email.toLowerCase().includes(clientSearch.toLowerCase()))
+    );
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -184,243 +114,297 @@ export default function Dashboard({ onLogout }) {
 
             <div className="max-w-7xl mx-auto p-6 space-y-8">
 
-                {/* Stats / Welcome (Optional placeholder for future stats) */}
+                {/* Stats / Welcome */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div onClick={() => setActiveTab('loans')} className={`cursor-pointer p-6 rounded-xl shadow-sm border transition ${activeTab === 'loans' ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-200' : 'bg-white border-gray-100 hover:border-blue-300'}`}>
                         <p className="text-gray-500 text-sm font-bold uppercase">Pending Loans</p>
                         <p className="text-3xl font-bold text-blue-900">{loans.length}</p>
                     </div>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div onClick={() => setActiveTab('cards')} className={`cursor-pointer p-6 rounded-xl shadow-sm border transition ${activeTab === 'cards' ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-200' : 'bg-white border-gray-100 hover:border-purple-300'}`}>
                         <p className="text-gray-500 text-sm font-bold uppercase">Card Requests</p>
                         <p className="text-3xl font-bold text-purple-900">{cardRequests.length}</p>
                     </div>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div onClick={() => setActiveTab('clients')} className={`cursor-pointer p-6 rounded-xl shadow-sm border transition ${activeTab === 'clients' ? 'bg-gray-100 border-gray-400 ring-2 ring-gray-200' : 'bg-white border-gray-100 hover:border-gray-300'}`}>
                         <p className="text-gray-500 text-sm font-bold uppercase">Total Clients</p>
                         <p className="text-3xl font-bold text-gray-800">{clients.length}</p>
                     </div>
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div onClick={() => setActiveTab('employees')} className={`cursor-pointer p-6 rounded-xl shadow-sm border transition ${activeTab === 'employees' ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-200' : 'bg-white border-gray-100 hover:border-orange-300'}`}>
                         <p className="text-gray-500 text-sm font-bold uppercase">Employees</p>
                         <p className="text-3xl font-bold text-orange-600">{employees.length}</p>
                     </div>
                 </div>
 
-                {/* Section: Loans */}
-                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-800">Loan Requests</h2>
-                            <p className="text-sm text-gray-500">Review and approve pending personal loans</p>
-                        </div>
-                        <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
-                            {loans.length} Pending
-                        </span>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
-                                    <th className="p-4 font-semibold">ID</th>
-                                    <th className="p-4 font-semibold">Client</th>
-                                    <th className="p-4 font-semibold">Amount</th>
-                                    <th className="p-4 font-semibold">Term</th>
-                                    <th className="p-4 font-semibold text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {loans.map((p) => (
-                                    <tr key={p.loan_id} className="hover:bg-gray-50 transition">
-                                        <td className="p-4 text-gray-500 text-sm">#{p.loan_id}</td>
-                                        <td className="p-4 font-bold text-gray-800">{p.nombre_completo}</td>
-                                        <td className="p-4 text-blue-600 font-bold">${p.amount_org}</td>
-                                        <td className="p-4">
-                                            <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">
-                                                {p.month_term} months
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <button
-                                                onClick={() => handleApprove(p.loan_id)}
-                                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded shadow-sm transition"
-                                            >
-                                                Approve
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {loans.length === 0 && (
-                                    <tr>
-                                        <td colSpan="5" className="p-8 text-center text-gray-400 italic">
-                                            No pending loan requests.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                {/* Tabs Navigation (Visual) */}
+                <div className="flex border-b border-gray-200">
+                    <button onClick={() => setActiveTab('loans')} className={`px-6 py-3 font-bold text-sm transition ${activeTab === 'loans' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Loans</button>
+                    <button onClick={() => setActiveTab('cards')} className={`px-6 py-3 font-bold text-sm transition ${activeTab === 'cards' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>Cards</button>
+                    <button onClick={() => setActiveTab('clients')} className={`px-6 py-3 font-bold text-sm transition ${activeTab === 'clients' ? 'border-b-2 border-gray-800 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Clients</button>
+                    <button onClick={() => setActiveTab('employees')} className={`px-6 py-3 font-bold text-sm transition ${activeTab === 'employees' ? 'border-b-2 border-orange-500 text-orange-600' : 'text-gray-500 hover:text-gray-700'}`}>Employees</button>
                 </div>
+
+                {/* Section: Loans */}
+                {activeTab === 'loans' && (
+                    <div className="bg-white rounded-xl shadow-lg overflow-hidden animate-fade-in">
+                        <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800">Loan Requests</h2>
+                                <p className="text-sm text-gray-500">Review and approve pending personal loans</p>
+                            </div>
+                            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+                                {loans.length} Pending
+                            </span>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
+                                        <th className="p-4 font-semibold">ID</th>
+                                        <th className="p-4 font-semibold">Client</th>
+                                        <th className="p-4 font-semibold">Amount</th>
+                                        <th className="p-4 font-semibold">Term</th>
+                                        <th className="p-4 font-semibold text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {loans.map((p) => (
+                                        <tr key={p.loan_id} className="hover:bg-gray-50 transition">
+                                            <td className="p-4 text-gray-500 text-sm">#{p.loan_id}</td>
+                                            <td className="p-4 font-bold text-gray-800">{p.nombre_completo}</td>
+                                            <td className="p-4 text-blue-600 font-bold">${p.amount_org}</td>
+                                            <td className="p-4">
+                                                <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">
+                                                    {p.month_term} months
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleRejectLoan(p.loan_id)}
+                                                        className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold py-2 px-4 rounded shadow-sm transition"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleApprove(p.loan_id)}
+                                                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded shadow-sm transition"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {loans.length === 0 && (
+                                        <tr>
+                                            <td colSpan="5" className="p-8 text-center text-gray-400 italic">
+                                                No pending loan requests.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
 
                 {/* Section: Cards */}
-                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-800">Credit Card Requests</h2>
-                            <p className="text-sm text-gray-500">Approve new credit card applications</p>
+                {activeTab === 'cards' && (
+                    <div className="bg-white rounded-xl shadow-lg overflow-hidden animate-fade-in">
+                        <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800">Credit Card Requests</h2>
+                                <p className="text-sm text-gray-500">Approve new credit card applications</p>
+                            </div>
+                            <span className="bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-full">
+                                {cardRequests.length} Pending
+                            </span>
                         </div>
-                        <span className="bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-full">
-                            {cardRequests.length} Pending
-                        </span>
-                    </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
-                                    <th className="p-4 font-semibold">Req ID</th>
-                                    <th className="p-4 font-semibold">Client</th>
-                                    <th className="p-4 font-semibold">Date</th>
-                                    <th className="p-4 font-semibold text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {cardRequests.map((req) => (
-                                    <tr key={req.request_id} className="hover:bg-gray-50 transition">
-                                        <td className="p-4 text-gray-500 text-sm">#{req.request_id}</td>
-                                        <td className="p-4 font-bold text-gray-800">{req.name} {req.lastname}</td>
-                                        <td className="p-4 text-gray-600 text-sm">{new Date(req.request_date).toLocaleDateString()}</td>
-                                        <td className="p-4 text-right">
-                                            <button
-                                                onClick={() => handleApproveCard(req.request_id)}
-                                                className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-2 px-4 rounded shadow-sm transition"
-                                            >
-                                                Approve
-                                            </button>
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
+                                        <th className="p-4 font-semibold">Req ID</th>
+                                        <th className="p-4 font-semibold">Client</th>
+                                        <th className="p-4 font-semibold">Date</th>
+                                        <th className="p-4 font-semibold text-right">Action</th>
                                     </tr>
-                                ))}
-                                {cardRequests.length === 0 && (
-                                    <tr>
-                                        <td colSpan="4" className="p-8 text-center text-gray-400 italic">
-                                            No pending card requests.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* Section: Employees (New) */}
-                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-800">Employee Management</h2>
-                            <p className="text-sm text-gray-500">Manage bank staff access</p>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {cardRequests.map((req) => (
+                                        <tr key={req.request_id} className="hover:bg-gray-50 transition">
+                                            <td className="p-4 text-gray-500 text-sm">#{req.request_id}</td>
+                                            <td className="p-4 font-bold text-gray-800">{req.name} {req.lastname}</td>
+                                            <td className="p-4 text-gray-600 text-sm">{new Date(req.request_date).toLocaleDateString()}</td>
+                                            <td className="p-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleRejectCard(req.request_id)}
+                                                        className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold py-2 px-4 rounded shadow-sm transition"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleApproveCard(req.request_id)}
+                                                        className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-2 px-4 rounded shadow-sm transition"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {cardRequests.length === 0 && (
+                                        <tr>
+                                            <td colSpan="4" className="p-8 text-center text-gray-400 italic">
+                                                No pending card requests.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
-                        <button
-                            onClick={() => setIsEmployeeModalOpen(true)}
-                            className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm transition flex items-center gap-2"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                            </svg>
-                            Add Employee
-                        </button>
                     </div>
+                )}
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
-                                    <th className="p-4 font-semibold">ID</th>
-                                    <th className="p-4 font-semibold">Name (User)</th>
-                                    <th className="p-4 font-semibold">Position</th>
-                                    <th className="p-4 font-semibold">Branch ID</th>
-                                    <th className="p-4 font-semibold text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {employees.map((emp) => (
-                                    <tr key={emp.emp_id} className="hover:bg-gray-50 transition">
-                                        <td className="p-4 text-gray-500 text-sm">#{emp.emp_id}</td>
-                                        <td className="p-4 font-bold text-gray-800">{emp.first_name} {emp.last_name}</td>
-                                        <td className="p-4 text-gray-600 text-sm">{emp.position}</td>
-                                        <td className="p-4 text-gray-600 text-sm">{emp.branch_id}</td>
-                                        <td className="p-4 text-right">
-                                            <button
-                                                onClick={() => handleDeleteEmployee(emp.emp_id)}
-                                                className="text-red-400 hover:text-red-600 font-bold text-xs transition border border-red-200 hover:border-red-400 px-3 py-1 rounded"
-                                            >
-                                                Remove
-                                            </button>
-                                        </td>
+                {/* Section: Employees */}
+                {activeTab === 'employees' && (
+                    <div className="bg-white rounded-xl shadow-lg overflow-hidden animate-fade-in">
+                        <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800">Employee Management</h2>
+                                <p className="text-sm text-gray-500">Manage bank staff access</p>
+                            </div>
+                            <button
+                                onClick={() => setIsEmployeeModalOpen(true)}
+                                className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm transition flex items-center gap-2"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                </svg>
+                                Add Employee
+                            </button>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
+                                        <th className="p-4 font-semibold">ID</th>
+                                        <th className="p-4 font-semibold">Name (User)</th>
+                                        <th className="p-4 font-semibold">Position</th>
+                                        <th className="p-4 font-semibold">Branch ID</th>
+                                        <th className="p-4 font-semibold text-right">Action</th>
                                     </tr>
-                                ))}
-                                {employees.length === 0 && (
-                                    <tr>
-                                        <td colSpan="5" className="p-8 text-center text-gray-400 italic">
-                                            No employees found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {employees.map((emp) => (
+                                        <tr key={emp.emp_id} className="hover:bg-gray-50 transition">
+                                            <td className="p-4 text-gray-500 text-sm">#{emp.emp_id}</td>
+                                            <td className="p-4 font-bold text-gray-800">{emp.first_name} {emp.last_name}</td>
+                                            <td className="p-4 text-gray-600 text-sm">{emp.position}</td>
+                                            <td className="p-4 text-gray-600 text-sm">{emp.branch_id}</td>
+                                            <td className="p-4 text-right">
+                                                <button
+                                                    onClick={() => handleDeleteEmployee(emp.emp_id)}
+                                                    className="text-red-400 hover:text-red-600 font-bold text-xs transition border border-red-200 hover:border-red-400 px-3 py-1 rounded"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {employees.length === 0 && (
+                                        <tr>
+                                            <td colSpan="5" className="p-8 text-center text-gray-400 italic">
+                                                No employees found.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Section: Clients */}
-                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-800">Client Management</h2>
-                            <p className="text-sm text-gray-500">Registered users database</p>
+                {activeTab === 'clients' && (
+                    <div className="bg-white rounded-xl shadow-lg overflow-hidden animate-fade-in">
+                        <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center flex-wrap gap-4">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800">Client Management</h2>
+                                <p className="text-sm text-gray-500">Registered users database</p>
+                                <p className="text-xs text-red-500">Debug: Clients: {clients.length}, Filtered: {filteredClients.length}, Search: "{clientSearch}"</p>
+                                {debugError && <p className="text-xs text-red-700 font-bold bg-red-100 p-1 rounded mt-1">Error: {debugError}</p>}
+                                <button
+                                    onClick={loadClients}
+                                    className="mt-2 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded hover:bg-blue-200"
+                                >
+                                    Force Reload
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search client..."
+                                        className="border rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-64"
+                                        value={clientSearch}
+                                        onChange={(e) => setClientSearch(e.target.value)}
+                                    />
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <span className="bg-gray-100 text-gray-800 text-xs font-bold px-3 py-1 rounded-full">
+                                    {filteredClients.length} Found
+                                </span>
+                            </div>
                         </div>
-                        <span className="bg-gray-100 text-gray-800 text-xs font-bold px-3 py-1 rounded-full">
-                            {clients.length} Total
-                        </span>
-                    </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
-                                    <th className="p-4 font-semibold">ID</th>
-                                    <th className="p-4 font-semibold">Name</th>
-                                    <th className="p-4 font-semibold">Email</th>
-                                    <th className="p-4 font-semibold">Phone</th>
-                                    <th className="p-4 font-semibold">Address</th>
-                                    <th className="p-4 font-semibold text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {clients.map((client) => (
-                                    <tr key={client.client_id} className="hover:bg-gray-50 transition">
-                                        <td className="p-4 text-gray-500 text-sm">#{client.client_id}</td>
-                                        <td className="p-4 font-bold text-gray-800">{client.first_name} {client.lastname}</td>
-                                        <td className="p-4 text-blue-600 text-sm">{client.email}</td>
-                                        <td className="p-4 text-gray-600 text-sm">{client.phone || '-'}</td>
-                                        <td className="p-4 text-gray-600 text-sm truncate max-w-xs" title={client.address}>{client.address || '-'}</td>
-                                        <td className="p-4 text-right">
-                                            <button
-                                                onClick={() => handleDeleteClient(client.client_id)}
-                                                className="text-red-400 hover:text-red-600 font-bold text-xs transition border border-red-200 hover:border-red-400 px-3 py-1 rounded"
-                                            >
-                                                Delete
-                                            </button>
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
+                                        <th className="p-4 font-semibold">ID</th>
+                                        <th className="p-4 font-semibold">Name</th>
+                                        <th className="p-4 font-semibold">Email</th>
+                                        <th className="p-4 font-semibold">Phone</th>
+                                        <th className="p-4 font-semibold">Address</th>
+                                        <th className="p-4 font-semibold text-right">Action</th>
                                     </tr>
-                                ))}
-                                {clients.length === 0 && (
-                                    <tr>
-                                        <td colSpan="6" className="p-8 text-center text-gray-400 italic">
-                                            No registered clients.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredClients.map((client) => (
+                                        <tr key={client.client_id} className="hover:bg-gray-50 transition">
+                                            <td className="p-4 text-gray-500 text-sm">#{client.client_id}</td>
+                                            <td className="p-4 font-bold text-gray-800">{client.first_name} {client.lastname}</td>
+                                            <td className="p-4 text-blue-600 text-sm">{client.email}</td>
+                                            <td className="p-4 text-gray-600 text-sm">{client.phone || '-'}</td>
+                                            <td className="p-4 text-gray-600 text-sm truncate max-w-xs" title={client.address}>{client.address || '-'}</td>
+                                            <td className="p-4 text-right">
+                                                <button
+                                                    onClick={() => handleDeleteClient(client.client_id)}
+                                                    className="text-red-400 hover:text-red-600 font-bold text-xs transition border border-red-200 hover:border-red-400 px-3 py-1 rounded"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredClients.length === 0 && (
+                                        <tr>
+                                            <td colSpan="6" className="p-8 text-center text-gray-400 italic">
+                                                No clients found matching "{clientSearch}".
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
+                )}
 
             </div>
 
