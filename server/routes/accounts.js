@@ -6,7 +6,10 @@ router.get('/usuario/:client_id', async (req, res) => {
     const { client_id } = req.params;
     try {
         const [accounts] = await db.query(
-            'SELECT * FROM account WHERE client_id = ?',
+            `SELECT a.*, t.type_name as acc_type 
+             FROM account a 
+             JOIN account_types t ON a.account_type_id = t.type_id 
+             WHERE a.client_id = ?`,
             [client_id]
         );
         res.json(accounts);
@@ -51,15 +54,29 @@ router.post('/transaction', async (req, res) => {
         await connection.beginTransaction();
 
         // 1. Verificar saldo si es retiro
-        if (type === 'WITHDRAW') {
-            const [accounts] = await connection.query('SELECT balance FROM account WHERE acc_id = ?', [acc_id]);
-            if (accounts.length === 0) {
+        // 1. Obtener información de la cuenta
+        const [accounts] = await connection.query('SELECT balance, account_type_id FROM account WHERE acc_id = ?', [acc_id]);
+        if (accounts.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: "Account not found" });
+        }
+        const account = accounts[0];
+        const currentBalance = parseFloat(account.balance);
+        const txnAmount = parseFloat(amount);
+
+        // 2. Validaciones según tipo de cuenta
+        if (account.account_type_id === 3) { // Crédito
+            if (type === 'DEPOSIT') {
                 await connection.rollback();
-                return res.status(404).json({ message: "Account not found" });
+                return res.status(400).json({ message: "Deposits are not allowed for Credit Accounts. Use 'Pay Card' instead." });
             }
-            if (accounts[0].balance < amount) {
+        }
+
+        // 3. Verificar fondos para retiro (aplica a todos)
+        if (type === 'WITHDRAW') {
+            if (currentBalance < txnAmount) {
                 await connection.rollback();
-                return res.status(400).json({ message: "Insufficient funds" });
+                return res.status(400).json({ message: "Insufficient funds / Credit limit exceeded" });
             }
         }
 
@@ -150,10 +167,17 @@ router.post('/create', async (req, res) => {
         return res.status(400).json({ message: "Missing required data" });
     }
 
+    // Map string type to ID
+    let typeId = 1; // Default Savings
+    if (acc_type === 'Ahorro' || acc_type === 'Savings') typeId = 1;
+    else if (acc_type === 'Inversión' || acc_type === 'Investment') typeId = 2;
+    else if (acc_type === 'Credit' || acc_type === 'Crédito') typeId = 3;
+    else if (acc_type === 'Cheques' || acc_type === 'Checking') typeId = 4;
+
     try {
         await db.query(
-            'INSERT INTO account (client_id, balance, acc_type, currency, branch_id) VALUES (?, ?, ?, ?, ?)',
-            [client_id, 0, acc_type, currency, 1]
+            'INSERT INTO account (client_id, balance, account_type_id, currency, branch_id) VALUES (?, ?, ?, ?, ?)',
+            [client_id, 0, typeId, currency, 1]
         );
         res.json({ success: true, message: "Account created successfully" });
     } catch (error) {
@@ -177,7 +201,8 @@ router.delete('/:acc_id', async (req, res) => {
         }
         const account = accounts[0];
 
-        if (account.acc_type === 'Credit') {
+        // 3 is CREDIT
+        if (account.account_type_id === 3) {
             // Para cuentas de crédito, verificamos que no haya deuda
             // Deuda = Retiros - Depósitos
             const [rows] = await connection.query(`
@@ -196,8 +221,8 @@ router.delete('/:acc_id', async (req, res) => {
             // Si se borra una cuenta de crédito, restauramos la solicitud a 'Pending' para que puedan volver a crearla si lo desean (útil para pruebas)
             await connection.query(`
                 UPDATE card_requests 
-                SET status = 'Pending' 
-                WHERE client_id = ? AND status = 'Approved' 
+                SET status = 'PENDING' 
+                WHERE client_id = ? AND status = 'APPROVED' 
                 ORDER BY request_date DESC LIMIT 1
             `, [account.client_id]);
         } else {

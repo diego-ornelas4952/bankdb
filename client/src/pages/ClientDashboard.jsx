@@ -57,7 +57,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
     // Inicializar datos de edición al abrir el modal
     useEffect(() => {
         if (isProfileModalOpen && user) {
-            setEditName(user.name);
+            setEditName(user.first_name);
             setEditLastname(user.lastname);
             setEditLastname2(user.lastname2 || '');
             setEditPhone(user.phone || '');
@@ -178,7 +178,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                 <div className="flex items-center gap-3">
                     <img src="/dbbank-logo.png" alt="DB Bank" className="h-12 object-contain" />
                     <div>
-                        <p className="text-sm opacity-80">Welcome, {user?.name}</p>
+                        <p className="text-sm opacity-80">Welcome, {user?.first_name}</p>
                     </div>
                 </div>
 
@@ -912,7 +912,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                     <>
                                         <div>
                                             <label className="block text-gray-500 text-xs font-bold uppercase">Name</label>
-                                            <p className="text-gray-800 font-medium text-lg">{user.name} {user.lastname} {user.lastname2}</p>
+                                            <p className="text-gray-800 font-medium text-lg">{user.first_name} {user.lastname} {user.lastname2}</p>
                                         </div>
                                         <div>
                                             <label className="block text-gray-500 text-xs font-bold uppercase">Email</label>
@@ -1037,7 +1037,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                     onChange={(e) => setNewCardAccId(e.target.value)}
                                 >
                                     <option value="">Select Account</option>
-                                    {accounts.map(acc => (
+                                    {accounts.filter(acc => acc.acc_type !== 'CREDIT').map(acc => (
                                         <option key={acc.acc_id} value={acc.acc_id}>
                                             {acc.acc_type} - ${acc.balance} ({acc.currency})
                                         </option>

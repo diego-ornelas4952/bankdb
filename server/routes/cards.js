@@ -6,8 +6,9 @@ const db = require('../config/db');
 router.get('/client/:id', async (req, res) => {
     const { id } = req.params;
     try {
+        // Join with account_types to get type_name
         const [rows] = await db.query(
-            'SELECT c.*, a.acc_type, a.currency FROM card c JOIN account a ON c.acc_id = a.acc_id WHERE a.client_id = ?',
+            'SELECT c.*, at.type_name as acc_type, a.currency FROM card c JOIN account a ON c.acc_id = a.acc_id JOIN account_types at ON a.account_type_id = at.type_id WHERE a.client_id = ?',
             [id]
         );
         res.json(rows);
@@ -29,7 +30,7 @@ router.post('/create', async (req, res) => {
 
         await db.query(
             'INSERT INTO card (acc_id, card_num, cvv, exp_date, card_type) VALUES (?, ?, ?, ?, ?)',
-            [acc_id, cardNumber, cvv, expirationDate, 'Debit']
+            [acc_id, cardNumber, cvv, expirationDate, 'DEBIT']
         );
 
         res.json({ success: true, message: 'Debit card created successfully' });
@@ -42,17 +43,17 @@ router.post('/create', async (req, res) => {
 router.post('/request-credit', async (req, res) => {
     const { client_id } = req.body;
     try {
-        // Create table if not exists
+        // Create table if not exists (Updated ENUM)
         await db.query(`
             CREATE TABLE IF NOT EXISTS card_requests (
                 request_id INT AUTO_INCREMENT PRIMARY KEY,
                 client_id INT,
                 request_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-                status VARCHAR(20) DEFAULT 'Pending'
+                status ENUM('PENDING','APPROVED','REJECTED') DEFAULT 'PENDING'
             )
         `);
 
-        await db.query('INSERT INTO card_requests (client_id) VALUES (?)', [client_id]);
+        await db.query('INSERT INTO card_requests (client_id, status) VALUES (?, ?)', [client_id, 'PENDING']);
 
         res.json({ success: true, message: 'Credit card request sent' });
     } catch (error) {
@@ -64,10 +65,10 @@ router.post('/request-credit', async (req, res) => {
 router.get('/requests', async (req, res) => {
     try {
         const [rows] = await db.query(`
-            SELECT r.*, c.name, c.lastname 
+            SELECT r.*, c.first_name as name, c.lastname 
             FROM card_requests r 
             JOIN clients c ON r.client_id = c.client_id 
-            WHERE r.status = 'Pending'
+            WHERE r.status = 'PENDING'
         `);
         res.json(rows);
     } catch (error) {
@@ -107,15 +108,15 @@ router.post('/approve/:id', async (req, res) => {
         }
         const request = requests[0];
 
-        // 2. Create Credit Account
+        // 2. Create Credit Account (account_type_id = 3 for CREDIT)
         const [accResult] = await connection.query(
-            'INSERT INTO account (client_id, balance, acc_type, currency, branch_id) VALUES (?, ?, ?, ?, ?)',
-            [request.client_id, credit_limit, 'Credit', 'MXN', 1]
+            'INSERT INTO account (client_id, balance, account_type_id, currency, branch_id) VALUES (?, ?, ?, ?, ?)',
+            [request.client_id, credit_limit, 3, 'MXN', 1]
         );
         const accId = accResult.insertId;
 
         // 3. Create Credit Card
-        const cardNumber = '5' + Math.floor(Math.random() * 1000000000000000).toString().padStart(15, '0'); // Visa/Mastercard start with 5 usually, but let's stick to 16 digits
+        const cardNumber = '5' + Math.floor(Math.random() * 1000000000000000).toString().padStart(15, '0');
         const cvv = Math.floor(Math.random() * 900 + 100).toString();
         const today = new Date();
         const year = today.getFullYear() + 5;
@@ -124,11 +125,11 @@ router.post('/approve/:id', async (req, res) => {
 
         await connection.query(
             'INSERT INTO card (acc_id, card_num, cvv, exp_date, card_type) VALUES (?, ?, ?, ?, ?)',
-            [accId, cardNumber, cvv, expirationDate, 'Credit']
+            [accId, cardNumber, cvv, expirationDate, 'CREDIT']
         );
 
         // 4. Update Request Status
-        await connection.query('UPDATE card_requests SET status = ? WHERE request_id = ?', ['Approved', id]);
+        await connection.query('UPDATE card_requests SET status = ? WHERE request_id = ?', ['APPROVED', id]);
 
         await connection.commit();
         res.json({ success: true, message: 'Credit card approved and created successfully' });

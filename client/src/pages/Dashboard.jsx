@@ -343,7 +343,7 @@ export default function Dashboard({ onLogout }) {
                                 {employees.map((emp) => (
                                     <tr key={emp.emp_id} className="hover:bg-gray-50 transition">
                                         <td className="p-4 text-gray-500 text-sm">#{emp.emp_id}</td>
-                                        <td className="p-4 font-bold text-gray-800">{emp.name}</td>
+                                        <td className="p-4 font-bold text-gray-800">{emp.first_name} {emp.last_name}</td>
                                         <td className="p-4 text-gray-600 text-sm">{emp.position}</td>
                                         <td className="p-4 text-gray-600 text-sm">{emp.branch_id}</td>
                                         <td className="p-4 text-right">
@@ -396,7 +396,7 @@ export default function Dashboard({ onLogout }) {
                                 {clients.map((client) => (
                                     <tr key={client.client_id} className="hover:bg-gray-50 transition">
                                         <td className="p-4 text-gray-500 text-sm">#{client.client_id}</td>
-                                        <td className="p-4 font-bold text-gray-800">{client.name} {client.lastname}</td>
+                                        <td className="p-4 font-bold text-gray-800">{client.first_name} {client.lastname}</td>
                                         <td className="p-4 text-blue-600 text-sm">{client.email}</td>
                                         <td className="p-4 text-gray-600 text-sm">{client.phone || '-'}</td>
                                         <td className="p-4 text-gray-600 text-sm truncate max-w-xs" title={client.address}>{client.address || '-'}</td>

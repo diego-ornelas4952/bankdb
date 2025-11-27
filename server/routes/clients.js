@@ -68,7 +68,7 @@ router.put('/:id', async (req, res) => {
 
     try {
         const [result] = await db.query(
-            'UPDATE clients SET name = ?, lastname = ?, lastname2 = ?, phone = ?, address = ? WHERE client_id = ?',
+            'UPDATE clients SET first_name = ?, lastname = ?, lastname2 = ?, phone = ?, address = ? WHERE client_id = ?',
             [name, lastname, lastname2, phone, address, id]
         );
 

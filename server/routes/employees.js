@@ -21,9 +21,14 @@ router.post('/', async (req, res) => {
     }
 
     try {
+        // Split name into first and last if possible, or just use name for both
+        const parts = name.split(' ');
+        const firstName = parts[0];
+        const lastName = parts.length > 1 ? parts.slice(1).join(' ') : 'Doe';
+
         await db.query(
-            'INSERT INTO employees (name, position, branch_id, password) VALUES (?, ?, ?, ?)',
-            [name, position || 'Executive', branch_id || 1, password]
+            'INSERT INTO employees (first_name, last_name, position, branch_id, password) VALUES (?, ?, ?, ?, ?)',
+            [firstName, lastName, position || 'Executive', branch_id || 1, password]
         );
         res.json({ success: true, message: "Employee created successfully" });
     } catch (error) {

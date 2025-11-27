@@ -5,7 +5,7 @@ const db = require('../config/db');
 router.get('/pending', async (req, res) => {
     try {
         const sql =
-            'SELECT p.loan_id, c.client_id, p.amount_org, p.interest_rate, p.month_term, CONCAT(c.name, " ", c.lastname, " ", c.lastname2) as nombre_completo FROM loans p JOIN clients c ON p.client_id = c.client_id WHERE p.approve_date IS NULL';
+            'SELECT p.loan_id, c.client_id, p.amount_org, p.interest_rate, p.month_term, CONCAT(c.first_name, " ", c.lastname, " ", c.lastname2) as nombre_completo FROM loans p JOIN clients c ON p.client_id = c.client_id WHERE p.approve_date IS NULL';
         const [rows] = await db.query(sql);
         res.json(rows);
     } catch (error) {
@@ -143,7 +143,7 @@ router.get('/client/:id', async (req, res) => {
                 a.acc_id,
                 a.balance
             FROM account a
-            WHERE a.client_id = ? AND a.acc_type = 'Credit'
+            WHERE a.client_id = ? AND a.account_type_id = 3
         `;
 
         const [rows] = await db.query(sql, [id, id]);
