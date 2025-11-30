@@ -19,14 +19,15 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
     // Estado para Solicitud de Préstamo
-    const [loanAmount, setLoanAmount] = useState(0);
+    const [loanAmount, setLoanAmount] = useState('');
     const [loanTerm, setLoanTerm] = useState(12);
 
     // Estado para Nueva Transacción
     const [transactionType, setTransactionType] = useState('DEPOSIT');
-    const [transactionAmount, setTransactionAmount] = useState(0);
+    const [transactionAmount, setTransactionAmount] = useState('');
     const [descTrn, setDescTrn] = useState('');
     const [idAccTrn, setIdAccTrn] = useState('');
+    const [installments, setInstallments] = useState(1);
 
     // Estado para Abrir Nueva Cuenta
     const [newAccType, setNewAccType] = useState('Savings');
@@ -602,7 +603,19 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                         {loan.isCreditCard ? (
                                                             <span className="text-purple-700 font-bold">Credit Limit: ${loan.amount_org}</span>
                                                         ) : (
-                                                            <>Status: {loan.approve_date ? <span className="text-green-600 font-bold">Active</span> : <span className="text-yellow-600 font-bold">Pending Approval</span>}</>
+                                                            <>
+                                                                Status: {loan.approve_date ? <span className="text-green-600 font-bold">Active</span> : <span className="text-yellow-600 font-bold">Pending Approval</span>}
+                                                                {loan.approve_date && (
+                                                                    <div className="mt-1 bg-blue-50 p-1 rounded border border-blue-100 inline-block">
+                                                                        <span className="font-bold text-blue-800">
+                                                                            Payment {Math.min(Math.floor(((loan.amount_org - loan.cap_balance) / loan.amount_org) * loan.month_term) + 1, loan.month_term)}/{loan.month_term}
+                                                                        </span>
+                                                                        <span className="ml-2 text-gray-600">
+                                                                            (${((loan.amount_org * 1.02) / loan.month_term).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo)
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            </>
                                                         )}
                                                     </p>
                                                 </div>
@@ -626,6 +639,23 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                         </button>
                                                     )}
                                                 </div>
+
+                                                {/* Installment Plans Display */}
+                                                {loan.isCreditCard && loan.installmentPlans && loan.installmentPlans.length > 0 && (
+                                                    <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-100 text-xs">
+                                                        <p className="font-bold text-blue-800 mb-1">Active Installment Plans:</p>
+                                                        <ul className="space-y-1">
+                                                            {loan.installmentPlans.map(plan => (
+                                                                <li key={plan.trn_id} className="flex justify-between items-center border-b border-blue-100 pb-1 last:border-0 last:pb-0">
+                                                                    <span className="text-gray-600 truncate w-2/3" title={plan.description}>{plan.description}</span>
+                                                                    <span className="font-bold text-blue-900">
+                                                                        ${(parseFloat(plan.amount) / plan.installments).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
+                                                                    </span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Formulario de Pago */}
@@ -634,27 +664,32 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                     <p className="text-xs font-bold text-gray-600 mb-2">
                                                         {loan.isCreditCard ? 'Pay Credit Card' : 'Make a Payment'}
                                                     </p>
+                                                    {loan.isCreditCard && (
+                                                        <p className="text-xs text-gray-500 mb-2">
+                                                            Minimum Payment (5%): <span className="font-bold text-gray-700">${(loan.cap_balance * 0.05).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                        </p>
+                                                    )}
                                                     <div className="flex gap-2 mb-2">
-                                                        <input
-                                                            type="number"
-                                                            placeholder="Amount"
-                                                            className="border rounded p-1 text-sm w-1/3"
-                                                            value={paymentAmount}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                if (/^\d*(\.\d{0,2})?$/.test(val)) {
-                                                                    setPaymentAmount(val);
-                                                                }
-                                                            }}
-                                                            onKeyDown={(e) => {
-                                                                const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', '.'];
-                                                                const isNumber = /^[0-9]$/.test(e.key);
-                                                                const isControl = e.ctrlKey || e.metaKey;
-                                                                if (!isNumber && !allowedKeys.includes(e.key) && !isControl) {
-                                                                    e.preventDefault();
-                                                                }
-                                                            }}
-                                                        />
+                                                        {loan.isCreditCard ? (
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Amount"
+                                                                className="border rounded p-1 text-sm w-1/3"
+                                                                value={paymentAmount}
+                                                                onChange={(e) => {
+                                                                    let val = e.target.value.replace(/[^\d.]/g, '');
+                                                                    const parts = val.split('.');
+                                                                    if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+                                                                    if (parts[0]) parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                                                                    if (parts[1] && parts[1].length > 2) parts[1] = parts[1].substring(0, 2);
+                                                                    setPaymentAmount(parts.length > 1 ? parts.join('.') : parts[0]);
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div className="border rounded p-1 text-sm w-1/3 bg-gray-100 flex items-center text-gray-700 font-bold px-2">
+                                                                ${((loan.amount_org * 1.02) / loan.month_term).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </div>
+                                                        )}
                                                         <select
                                                             className="border rounded p-1 text-sm w-2/3"
                                                             value={paymentAccId}
@@ -672,13 +707,16 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                     </div>
                                                     <button
                                                         onClick={() => {
-                                                            if (!paymentAmount || !paymentAccId) return alert("Please fill all fields");
+                                                            const fixedAmount = ((loan.amount_org * 1.02) / loan.month_term).toFixed(2);
+                                                            const finalAmount = loan.isCreditCard ? paymentAmount.toString().replace(/,/g, '') : fixedAmount;
+
+                                                            if ((loan.isCreditCard && !paymentAmount) || !paymentAccId) return alert("Please fill all fields");
 
                                                             fetch(`http://localhost:3000/api/loans/pay/${loan.loan_id}`, {
                                                                 method: 'POST',
                                                                 headers: { 'Content-Type': 'application/json' },
                                                                 body: JSON.stringify({
-                                                                    amount: paymentAmount,
+                                                                    amount: finalAmount,
                                                                     acc_id: paymentAccId,
                                                                     isCreditCard: loan.isCreditCard
                                                                 })
@@ -718,22 +756,31 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                 <div>
                                     <label className="block text-gray-700 text-sm font-bold mb-2">Amount</label>
                                     <input
-                                        type="number"
+                                        type="text"
                                         className="border rounded p-2 w-full"
                                         placeholder="Ej. 5000"
+                                        value={loanAmount}
                                         onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (/^\d*(\.\d{0,2})?$/.test(val)) {
-                                                setLoanAmount(val);
+                                            // Remove non-numeric chars except dot
+                                            let val = e.target.value.replace(/[^\d.]/g, '');
+
+                                            // Ensure only one dot
+                                            const parts = val.split('.');
+                                            if (parts.length > 2) {
+                                                val = parts[0] + '.' + parts.slice(1).join('');
                                             }
-                                        }}
-                                        onKeyDown={(e) => {
-                                            const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', '.'];
-                                            const isNumber = /^[0-9]$/.test(e.key);
-                                            const isControl = e.ctrlKey || e.metaKey;
-                                            if (!isNumber && !allowedKeys.includes(e.key) && !isControl) {
-                                                e.preventDefault();
+
+                                            // Add commas
+                                            if (parts[0]) {
+                                                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
                                             }
+
+                                            // Limit decimals
+                                            if (parts[1] && parts[1].length > 2) {
+                                                parts[1] = parts[1].substring(0, 2);
+                                            }
+
+                                            setLoanAmount(parts.length > 1 ? parts.join('.') : parts[0]);
                                         }}
                                     />
                                 </div>
@@ -753,13 +800,22 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                     <button onClick={() => setIsLoanModalOpen(false)} className="px-4 py-2 text-gray-500 font-bold">Cancel</button>
                                     <button
                                         onClick={() => {
-                                            if (loanAmount > 50000) {
-                                                return alert("The maximum loan amount is $50,000");
+                                            const rawAmount = loanAmount.toString().replace(/,/g, '');
+
+                                            // Validation: First loan max $50,000
+                                            if (loans.length === 0 && parseFloat(rawAmount) > 50000) {
+                                                return alert("For your first loan, the maximum amount is $50,000");
                                             }
+
+                                            // General limit (e.g., $500,000 for subsequent loans)
+                                            if (parseFloat(rawAmount) > 500000) {
+                                                return alert("The maximum loan amount is $500,000");
+                                            }
+
                                             fetch('http://localhost:3000/api/loans/request', {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ client_id: user.client_id, amount: loanAmount, months: loanTerm })
+                                                body: JSON.stringify({ client_id: user.client_id, amount: rawAmount, months: loanTerm })
                                             })
                                                 .then(res => res.json())
                                                 .then(data => {
@@ -814,22 +870,31 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                     <div className="w-1/2">
                                         <label className="block text-gray-700 text-sm font-bold mb-2">Amount</label>
                                         <input
-                                            type="number"
+                                            type="text"
                                             className="border rounded p-2 w-full"
-                                            placeholder="0.00"
+                                            placeholder="$0.00"
+                                            value={transactionAmount}
                                             onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (/^\d*(\.\d{0,2})?$/.test(val)) {
-                                                    setTransactionAmount(val);
+                                                // Remove non-numeric chars except dot
+                                                let val = e.target.value.replace(/[^\d.]/g, '');
+
+                                                // Ensure only one dot
+                                                const parts = val.split('.');
+                                                if (parts.length > 2) {
+                                                    val = parts[0] + '.' + parts.slice(1).join('');
                                                 }
-                                            }}
-                                            onKeyDown={(e) => {
-                                                const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', '.'];
-                                                const isNumber = /^[0-9]$/.test(e.key);
-                                                const isControl = e.ctrlKey || e.metaKey;
-                                                if (!isNumber && !allowedKeys.includes(e.key) && !isControl) {
-                                                    e.preventDefault();
+
+                                                // Add commas
+                                                if (parts[0]) {
+                                                    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
                                                 }
+
+                                                // Limit decimals
+                                                if (parts[1] && parts[1].length > 2) {
+                                                    parts[1] = parts[1].substring(0, 2);
+                                                }
+
+                                                setTransactionAmount(parts.length > 1 ? parts.join('.') : parts[0]);
                                             }}
                                         />
                                     </div>
@@ -843,20 +908,50 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                         onChange={(e) => setDescTrn(e.target.value)}
                                     />
                                 </div>
+
+                                {idAccTrn && accounts.find(a => a.acc_id === parseInt(idAccTrn))?.account_type_id === 3 && transactionType === 'WITHDRAWAL' && (
+                                    <div className="mt-4">
+                                        <label className="block text-gray-700 text-sm font-bold mb-2">Installments (Monthly Payments)</label>
+                                        <select
+                                            className="border rounded p-2 w-full"
+                                            value={installments}
+                                            onChange={(e) => setInstallments(parseInt(e.target.value))}
+                                        >
+                                            <option value={1}>1 Month (Cash)</option>
+                                            <option value={3}>3 Months</option>
+                                            <option value={6}>6 Months</option>
+                                            <option value={9}>9 Months</option>
+                                            <option value={12}>12 Months</option>
+                                        </select>
+                                        {installments > 1 && transactionAmount && (
+                                            <p className="text-xs text-blue-600 mt-1 font-bold">
+                                                Pay ${((parseFloat(transactionAmount.replace(/,/g, '')) * 1.02) / installments).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / month for {installments} months (Total: ${(parseFloat(transactionAmount.replace(/,/g, '')) * 1.02).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="flex justify-end gap-3 mt-6">
                                     <button onClick={() => setIsTransactionModalOpen(false)} className="px-4 py-2 text-gray-500 font-bold">Cancel</button>
                                     <button
                                         onClick={() => {
                                             if (!idAccTrn) return alert("Select an account");
 
-                                            if (transactionType === 'DEPOSIT' && parseFloat(transactionAmount) > 10000) {
+                                            const rawAmount = transactionAmount.toString().replace(/,/g, '');
+
+                                            if (transactionType === 'DEPOSIT' && parseFloat(rawAmount) > 10000) {
                                                 return alert("The maximum deposit amount per operation is $10,000");
                                             }
 
                                             fetch('http://localhost:3000/api/accounts/transaction', {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ acc_id: idAccTrn, type: transactionType, amount: transactionAmount, description: descTrn })
+                                                body: JSON.stringify({
+                                                    acc_id: idAccTrn,
+                                                    type: transactionType,
+                                                    amount: rawAmount,
+                                                    description: descTrn,
+                                                    installments: installments
+                                                })
                                             })
                                                 .then(res => {
                                                     if (!res.ok) return res.json().then(err => { throw new Error(err.message) });
@@ -897,6 +992,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                         <option value="Savings">Savings</option>
                                         <option value="Current">Current</option>
                                         <option value="Investment">Investment</option>
+                                        <option value="Credit">Credit</option>
                                     </select>
                                 </div>
                                 <div>
@@ -914,6 +1010,20 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                     <button onClick={() => setIsAccountModalOpen(false)} className="px-4 py-2 text-gray-500 font-bold">Cancel</button>
                                     <button
                                         onClick={() => {
+                                            // Validation: Max 3 Normal Accounts, Max 1 Credit Account
+                                            const creditAccounts = accounts.filter(a => a.acc_type === 'Credit' || a.acc_type === 'Crédito').length;
+                                            const normalAccounts = accounts.filter(a => a.acc_type !== 'Credit' && a.acc_type !== 'Crédito').length;
+
+                                            if (newAccType === 'Credit') {
+                                                if (creditAccounts >= 1) {
+                                                    return alert("You can only have 1 Credit Account.");
+                                                }
+                                            } else {
+                                                if (normalAccounts >= 3) {
+                                                    return alert("You have reached the maximum number of accounts.");
+                                                }
+                                            }
+
                                             fetch('http://localhost:3000/api/accounts/create', {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
@@ -1091,23 +1201,31 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                 <div>
                                     <label className="block text-gray-700 text-sm font-bold mb-2">Annual Premium</label>
                                     <input
-                                        type="number"
+                                        type="text"
                                         className="border rounded p-2 w-full"
                                         placeholder="Ej. 5000"
                                         value={annualPremium}
                                         onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (/^\d*(\.\d{0,2})?$/.test(val)) {
-                                                setAnnualPremium(val);
+                                            // Remove non-numeric chars except dot
+                                            let val = e.target.value.replace(/[^\d.]/g, '');
+
+                                            // Ensure only one dot
+                                            const parts = val.split('.');
+                                            if (parts.length > 2) {
+                                                val = parts[0] + '.' + parts.slice(1).join('');
                                             }
-                                        }}
-                                        onKeyDown={(e) => {
-                                            const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', '.'];
-                                            const isNumber = /^[0-9]$/.test(e.key);
-                                            const isControl = e.ctrlKey || e.metaKey;
-                                            if (!isNumber && !allowedKeys.includes(e.key) && !isControl) {
-                                                e.preventDefault();
+
+                                            // Add commas
+                                            if (parts[0]) {
+                                                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
                                             }
+
+                                            // Limit decimals
+                                            if (parts[1] && parts[1].length > 2) {
+                                                parts[1] = parts[1].substring(0, 2);
+                                            }
+
+                                            setAnnualPremium(parts.length > 1 ? parts.join('.') : parts[0]);
                                         }}
                                     />
                                 </div>
@@ -1153,7 +1271,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                 body: JSON.stringify({
                                                     client_id: user.client_id,
                                                     ins_type: insuranceType,
-                                                    premium: annualPremium,
+                                                    premium: annualPremium.toString().replace(/,/g, ''),
                                                     beneficiary: beneficiaryInsurance,
                                                     duration: insuranceDuration
                                                 })
@@ -1199,11 +1317,14 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                         onChange={(e) => setNewCardAccId(e.target.value)}
                                     >
                                         <option value="">Select Account</option>
-                                        {accounts.filter(acc => acc.acc_type !== 'CREDIT').map(acc => (
-                                            <option key={acc.acc_id} value={acc.acc_id}>
-                                                {acc.acc_type} - ${acc.balance} ({acc.currency})
-                                            </option>
-                                        ))}
+                                        {accounts
+                                            .filter(acc => acc.acc_type !== 'CREDIT')
+                                            .filter(acc => !cards.some(card => card.acc_id === acc.acc_id)) // Exclude accounts that already have a card
+                                            .map(acc => (
+                                                <option key={acc.acc_id} value={acc.acc_id}>
+                                                    {acc.acc_type} - ${acc.balance} ({acc.currency})
+                                                </option>
+                                            ))}
                                     </select>
                                     <button
                                         onClick={() => {

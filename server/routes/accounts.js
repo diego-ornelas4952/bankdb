@@ -62,13 +62,21 @@ router.post('/transaction', async (req, res) => {
         }
         const account = accounts[0];
         const currentBalance = parseFloat(account.balance);
-        const txnAmount = parseFloat(amount);
+        let txnAmount = parseFloat(amount);
+        let finalInstallments = 1;
+        let finalDesc = description;
 
         // 2. Validaciones según tipo de cuenta
         if (account.account_type_id === 3) { // Crédito
             if (type === 'DEPOSIT') {
                 await connection.rollback();
                 return res.status(400).json({ message: "Deposits are not allowed for Credit Accounts. Use 'Pay Card' instead." });
+            }
+            // Apply installments logic
+            if (type === 'WITHDRAWAL' && req.body.installments > 1) {
+                finalInstallments = req.body.installments;
+                txnAmount = txnAmount * 1.02; // Add 2% interest
+                finalDesc = (description || 'Purchase') + ` (${finalInstallments} months)`;
             }
         }
 
@@ -82,12 +90,12 @@ router.post('/transaction', async (req, res) => {
 
         // 2. Update balance
         const operator = type === 'DEPOSIT' ? '+' : '-';
-        await connection.query(`UPDATE account SET balance = balance ${operator} ? WHERE acc_id = ?`, [amount, acc_id]);
+        await connection.query(`UPDATE account SET balance = balance ${operator} ? WHERE acc_id = ?`, [txnAmount, acc_id]);
 
         // 3. Register transaction
         await connection.query(
-            'INSERT INTO transactions (acc_id, trn_type, description, date_time, amount) VALUES (?, ?, ?, ?, ?)',
-            [acc_id, type, description || (type === 'DEPOSIT' ? 'Deposit in Branch' : 'Withdrawal'), new Date(), amount]
+            'INSERT INTO transactions (acc_id, trn_type, description, date_time, amount, installments) VALUES (?, ?, ?, ?, ?, ?)',
+            [acc_id, type, finalDesc || (type === 'DEPOSIT' ? 'Deposit in Branch' : 'Withdrawal'), new Date(), txnAmount, finalInstallments]
         );
 
         await connection.commit();

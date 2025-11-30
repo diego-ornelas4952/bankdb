@@ -90,6 +90,99 @@ export default function Dashboard({ onLogout }) {
         (client.email && client.email.toLowerCase().includes(clientSearch.toLowerCase()))
     );
 
+    // --- Handlers ---
+
+    const handleApprove = (id) => {
+        if (!confirm("Are you sure you want to approve this loan?")) return;
+        fetch(`http://127.0.0.1:3000/api/loans/approve/${id}`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message || data.error);
+                loadLoans();
+            })
+            .catch(err => alert("Error: " + err.message));
+    };
+
+    const handleRejectLoan = (id) => {
+        if (!confirm("Are you sure you want to reject this loan?")) return;
+        fetch(`http://127.0.0.1:3000/api/loans/reject/${id}`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message || data.error);
+                loadLoans();
+            })
+            .catch(err => alert("Error: " + err.message));
+    };
+
+    const handleApproveCard = (id) => {
+        const limit = prompt("Enter Credit Limit for this card:", "15000");
+        if (!limit) return;
+
+        fetch(`http://127.0.0.1:3000/api/cards/approve/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credit_limit: limit })
+        })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message || data.error);
+                loadCardRequests();
+            })
+            .catch(err => alert("Error: " + err.message));
+    };
+
+    const handleRejectCard = (id) => {
+        if (!confirm("Are you sure you want to reject this card request?")) return;
+        fetch(`http://127.0.0.1:3000/api/cards/reject/${id}`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message || data.error);
+                loadCardRequests();
+            })
+            .catch(err => alert("Error: " + err.message));
+    };
+
+    const handleAddEmployee = (e) => {
+        e.preventDefault();
+        fetch('http://127.0.0.1:3000/api/employees', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newEmployee)
+        })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message || data.error);
+                if (data.success) {
+                    setIsEmployeeModalOpen(false);
+                    setNewEmployee({ name: '', position: '', password: '' });
+                    loadEmployees();
+                }
+            })
+            .catch(err => alert("Error: " + err.message));
+    };
+
+    const handleDeleteEmployee = (id) => {
+        if (!confirm("Are you sure you want to remove this employee?")) return;
+        fetch(`http://127.0.0.1:3000/api/employees/${id}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message || data.error);
+                loadEmployees();
+            })
+            .catch(err => alert("Error: " + err.message));
+    };
+
+    const handleDeleteClient = (id) => {
+        if (!confirm("Are you sure you want to delete this client? This action cannot be undone.")) return;
+        fetch(`http://127.0.0.1:3000/api/clients/${id}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message || data.error);
+                loadClients();
+            })
+            .catch(err => alert("Error: " + err.message));
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Navbar */}
@@ -335,14 +428,6 @@ export default function Dashboard({ onLogout }) {
                             <div>
                                 <h2 className="text-xl font-bold text-gray-800">Client Management</h2>
                                 <p className="text-sm text-gray-500">Registered users database</p>
-                                <p className="text-xs text-red-500">Debug: Clients: {clients.length}, Filtered: {filteredClients.length}, Search: "{clientSearch}"</p>
-                                {debugError && <p className="text-xs text-red-700 font-bold bg-red-100 p-1 rounded mt-1">Error: {debugError}</p>}
-                                <button
-                                    onClick={loadClients}
-                                    className="mt-2 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded hover:bg-blue-200"
-                                >
-                                    Force Reload
-                                </button>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="relative">

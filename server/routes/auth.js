@@ -18,8 +18,8 @@ router.post('/login', async (req, res) => {
         // Ojo: La tabla employees tiene first_name y last_name.
         // Si el usuario ingresa "Juan", buscaremos en first_name.
         const [employees] = await db.query(
-            'SELECT * FROM employees WHERE first_name = ? AND password = ?',
-            [email, hashedPassword] // Aquí 'email' actúa como nombre de usuario
+            'SELECT * FROM employees WHERE (first_name = ? OR CONCAT(first_name, " ", last_name) = ?) AND password = ?',
+            [email, email, hashedPassword] // 'email' contains the input name
         );
 
         if (employees.length > 0) {

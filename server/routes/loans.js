@@ -182,9 +182,21 @@ router.get('/client/:id', async (req, res) => {
 
         const [rows] = await db.query(sql, [id, id]);
 
-        // Filter out credit cards with 0 or negative debt (overpaid) if desired, 
-        // but showing them allows seeing the available credit too.
-        // We will map them to ensure proper formatting.
+        // Fetch installment transactions for these credit cards
+        const creditCardIds = rows.filter(r => r.type === 'Credit Card').map(r => r.loan_id); // loan_id is acc_id for cards
+        let installmentsMap = {};
+
+        if (creditCardIds.length > 0) {
+            const [instRows] = await db.query(
+                `SELECT * FROM transactions WHERE acc_id IN (?) AND installments > 1 ORDER BY date_time DESC`,
+                [creditCardIds]
+            );
+            // Group by acc_id
+            instRows.forEach(tx => {
+                if (!installmentsMap[tx.acc_id]) installmentsMap[tx.acc_id] = [];
+                installmentsMap[tx.acc_id].push(tx);
+            });
+        }
 
         const results = rows.map(row => ({
             ...row,
@@ -192,7 +204,8 @@ router.get('/client/:id', async (req, res) => {
             // Ensure numbers are numbers
             amount_org: parseFloat(row.amount_org),
             cap_balance: parseFloat(row.cap_balance),
-            balance: parseFloat(row.balance)
+            balance: parseFloat(row.balance),
+            installmentPlans: row.type === 'Credit Card' ? (installmentsMap[row.loan_id] || []) : []
         })).filter(row => row.cap_balance > 0); // Only show active debts
 
         res.json(results);
