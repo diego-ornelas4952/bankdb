@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../config/db');
 const crypto = require('crypto');
 
-// Helper para hash SHA-256
+// Helper for SHA-256 hash
 function hashPassword(password) {
     return crypto.createHash('sha256').update(password).digest('hex');
 }
@@ -13,10 +13,10 @@ router.post('/login', async (req, res) => {
     const hashedPassword = hashPassword(password);
 
     try {
-        // 1. Primero buscamos en la tabla de EMPLEADOS
-        // Nota: Usamos first_name y last_name si es necesario, pero aquí asumimos que el usuario ingresa su nombre
-        // Ojo: La tabla employees tiene first_name y last_name.
-        // Si el usuario ingresa "Juan", buscaremos en first_name.
+        // 1. First search in EMPLOYEES table
+        // Note: We use first_name and last_name if necessary, but here we assume the user enters their name
+        // Note: The employees table has first_name and last_name.
+        // If the user enters "Juan", we will search in first_name.
         const [employees] = await db.query(
             'SELECT * FROM employees WHERE (first_name = ? OR CONCAT(first_name, " ", last_name) = ?) AND password = ?',
             [email, email, hashedPassword] // 'email' contains the input name
@@ -46,7 +46,7 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // 3. Si no se encuentra en ninguno
+        // 3. If not found in either
         res.status(401).json({ success: false, message: 'Invalid credentials' });
 
     } catch (error) {
@@ -89,11 +89,11 @@ router.post('/register', async (req, res) => {
 
         const hashedPassword = hashPassword(password);
 
-        // Usamos first_name en lugar de name
+        // Use first_name instead of name
         const sql = 'INSERT INTO clients (first_name, lastname, lastname2, curp, email, password, address, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
         const [result] = await db.query(sql, [name, lastname, lastname2, curp, email, hashedPassword, address, phone]);
 
-        // Crear cuenta por defecto (Ahorro MXN) -> account_type_id = 1 (SAVINGS)
+        // Create default account (Savings MXN) -> account_type_id = 1 (SAVINGS)
         const clientId = result.insertId;
         const [accResult] = await db.query(
             'INSERT INTO account (client_id, balance, account_type_id, currency, branch_id) VALUES (?, ?, ?, ?, ?)',
@@ -102,7 +102,7 @@ router.post('/register', async (req, res) => {
 
         const accId = accResult.insertId;
 
-        // Generar tarjeta de débito por defecto
+        // Generate default debit card
         const cardNumber = '4' + Math.floor(Math.random() * 1000000000000000).toString().padStart(15, '0');
         const cvv = Math.floor(Math.random() * 900 + 100).toString();
         const today = new Date();
@@ -112,7 +112,7 @@ router.post('/register', async (req, res) => {
 
         await db.query(
             'INSERT INTO card (acc_id, card_num, cvv, exp_date, card_type) VALUES (?, ?, ?, ?, ?)',
-            [accId, cardNumber, cvv, expirationDate, 'DEBIT'] // Enum es mayúsculas
+            [accId, cardNumber, cvv, expirationDate, 'DEBIT'] // Enum is uppercase
         );
 
         res.json({ success: true, message: 'User created with default account!' });

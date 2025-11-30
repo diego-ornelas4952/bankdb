@@ -23,11 +23,11 @@ router.post('/approve/:id', async (req, res) => {
     let connection;
 
     try {
-        // Obtenemos una conexión exclusiva para hacer una transacción segura
+        // Get exclusive connection for secure transaction
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        // 1. Obtener datos del préstamo para saber monto y plazo
+        // 1. Get loan data for amount and term
         const [loans] = await connection.query('SELECT * FROM loans WHERE loan_id = ?', [id]);
 
         if (loans.length === 0) {
@@ -40,35 +40,35 @@ router.post('/approve/:id', async (req, res) => {
         const today = new Date();
         const disburDate = today.toISOString().slice(0, 10); // YYYY-MM-DD
 
-        // Calcular vencimiento sumando los meses del plazo
+        // Calculate expiration by adding term months
         const expDate = new Date(today);
         expDate.setMonth(expDate.getMonth() + loan.month_term);
         const expirationDate = expDate.toISOString().slice(0, 10);
 
-        // 3. Actualizar el préstamo (Aprobar, Desembolsar, Vencimiento)
+        // 3. Update loan (Approve, Disburse, Expiration)
         await connection.query(
             'UPDATE loans SET approve_date = ?, disbur_date = ?, expiration_date = ?, emp_id_approved = ? WHERE loan_id = ?',
             [disburDate, disburDate, expirationDate, emp_id_approved, id]
         );
 
-        // 4. Lógica de Desembolso: Depositar el dinero en la cuenta del cliente
-        // Buscamos la primera cuenta activa del cliente
+        // 4. Disbursement Logic: Deposit money to client account
+        // Find first active client account
         const [accounts] = await connection.query('SELECT acc_id FROM account WHERE client_id = ? LIMIT 1', [loan.client_id]);
 
         if (accounts.length > 0) {
             const acc_id = accounts[0].acc_id;
 
-            // A) Actualizar saldo de la cuenta
+            // A) Update account balance
             await connection.query('UPDATE account SET balance = balance + ? WHERE acc_id = ?', [loan.amount_org, acc_id]);
 
-            // B) Registrar la transacción en el historial
+            // B) Register transaction in history
             await connection.query(
                 'INSERT INTO transactions (acc_id, trn_type, description, date_time, amount) VALUES (?, ?, ?, ?, ?)',
                 [acc_id, 'DEPOSIT', `Disbursement Loan #${id}`, new Date(), loan.amount_org]
             );
         }
 
-        // Confirmar todos los cambios
+        // Confirm all changes
         await connection.query(
             'INSERT INTO notifications (client_id, message, type) VALUES (?, ?, ?)',
             [loan.client_id, `Your loan of $${loan.amount_org} has been approved and disbursed!`, 'success']
@@ -78,12 +78,12 @@ router.post('/approve/:id', async (req, res) => {
         res.json({ message: 'Loan approved and disbursed successfully' });
 
     } catch (error) {
-        // Si algo falla, revertimos todo
+        // If something fails, rollback everything
         if (connection) await connection.rollback();
         console.error("Error in approval:", error);
         res.status(500).json({ error: error.message });
     } finally {
-        // Liberar la conexión
+        // Release connection
         if (connection) connection.release();
     }
 });
@@ -114,24 +114,24 @@ router.post('/reject/:id', async (req, res) => {
     }
 });
 
-// Solicitud de préstamo por parte del cliente
+// Loan request by client
 router.post('/request', async (req, res) => {
     const { client_id, amount, months } = req.body;
 
-    // Validaciones básicas de negocio
+    // Basic business validations
     if (amount <= 0 || months <= 0) {
         return res.status(400).json({ message: "Invalid data" });
     }
 
     try {
-        // Insertamos en 'loans'. 
-        // Nota: cap_balance inicia igual al monto original. tolerance inicia en 0.
+        // Insert into 'loans'. 
+        // Note: cap_balance starts equal to original amount. tolerance starts at 0.
         const sql = `
             INSERT INTO loans 
             (client_id, amount_org, cap_balance, month_term, interest_rate, tolerance, approve_date) 
             VALUES (?, ?, ?, ?, 15.0, 0, NULL)
         `;
-        // Asumimos una tasa fija del 15.0% por ahora
+        // Assume fixed rate of 15.0% for now
         await db.query(sql, [client_id, amount, amount, months]);
 
         res.json({ message: "Loan request sent for approval" });

@@ -33,14 +33,14 @@ router.get('/:acc_id/transactions', async (req, res) => {
     }
 });
 
-// Obtener tarjetas de una cuenta especifica
+// Get cards for a specific account
 router.get('/:acc_id/cards', async (req, res) => {
     const { acc_id } = req.params;
     const [cards] = await db.query('SELECT * FROM card WHERE acc_id = ?', [acc_id]);
     res.json(cards);
 });
 
-// Crear nueva transacción (Depósito o Retiro)
+// Create new transaction (Deposit or Withdrawal)
 router.post('/transaction', async (req, res) => {
     const { acc_id, type, amount, description } = req.body;
 
@@ -53,8 +53,8 @@ router.post('/transaction', async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        // 1. Verificar saldo si es retiro
-        // 1. Obtener información de la cuenta
+        // 1. Check balance if withdrawal
+        // 1. Get account information
         const [accounts] = await connection.query('SELECT balance, account_type_id FROM account WHERE acc_id = ?', [acc_id]);
         if (accounts.length === 0) {
             await connection.rollback();
@@ -67,7 +67,7 @@ router.post('/transaction', async (req, res) => {
         let finalDesc = description;
 
         // 2. Validaciones según tipo de cuenta
-        if (account.account_type_id === 3) { // Crédito
+        if (account.account_type_id === 3) { // Credit
             if (type === 'DEPOSIT') {
                 await connection.rollback();
                 return res.status(400).json({ message: "Deposits are not allowed for Credit Accounts. Use 'Pay Card' instead." });
@@ -80,7 +80,7 @@ router.post('/transaction', async (req, res) => {
             }
         }
 
-        // 3. Verificar fondos para retiro (aplica a todos)
+        // 3. Check funds for withdrawal (applies to all)
         if (type === 'WITHDRAWAL') {
             if (currentBalance < txnAmount) {
                 await connection.rollback();
@@ -110,7 +110,7 @@ router.post('/transaction', async (req, res) => {
     }
 });
 
-// Transferencia entre cuentas
+// Transfer between accounts
 router.post('/transfer', async (req, res) => {
     const { origin_id, dest_id, amount } = req.body;
 
@@ -167,7 +167,7 @@ router.post('/transfer', async (req, res) => {
     }
 });
 
-// Crear nueva cuenta
+// Create new account
 router.post('/create', async (req, res) => {
     const { client_id, acc_type, currency } = req.body;
 
@@ -199,7 +199,7 @@ router.post('/create', async (req, res) => {
     }
 });
 
-// Eliminar cuenta (solo si saldo es 0 o no hay deuda en crédito)
+// Delete account (only if balance is 0 or no credit debt)
 router.delete('/:acc_id', async (req, res) => {
     const { acc_id } = req.params;
     let connection;

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import Dashboard from './pages/Dashboard'; // Tu panel de empleados actual
-import Login from './pages/login';
-import Register from './pages/Register';
-import ClientDashboard from './pages/ClientDashboard';
+import Dashboard from './pages/Dashboard'; // Admin panel
+import Login from './pages/login'; // Login panel
+import Register from './pages/Register'; // Registration panel
+import ClientDashboard from './pages/ClientDashboard'; // Client panel
 
 function App() {
-    const [user, setUser] = useState(null); // null = nadie logueado
-    const [role, setRole] = useState('');   // 'admin' o 'client'
+    const [user, setUser] = useState(null); // Nobody logged in
+    const [role, setRole] = useState('');   // 'admin' or 'client'
     const [isRegistering, setIsRegistering] = useState(false);
 
     const handleLogin = (userData, roleUser) => {
@@ -24,7 +24,7 @@ function App() {
         setIsRegistering(false);
     };
 
-    // Lógica de ruteo simple
+    // Simple routing logic
     if (!user) {
         if (isRegistering) {
             return <Register onSwitchToLogin={() => setIsRegistering(false)} />;

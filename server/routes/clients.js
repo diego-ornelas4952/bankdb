@@ -19,7 +19,7 @@ router.delete('/:id', async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        // 1. Verificar si tiene dinero en alguna cuenta
+        // 1. Check if they have money in any account
         const [accounts] = await connection.query('SELECT balance FROM account WHERE client_id = ?', [id]);
         const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
 
@@ -28,8 +28,8 @@ router.delete('/:id', async (req, res) => {
             return res.status(400).json({ error: 'Cannot delete client with active funds. Please withdraw all funds first.' });
         }
 
-        // 2. Eliminar dependencias (Cascada manual)
-        // Obtener IDs de cuentas para borrar sus transacciones y tarjetas
+        // 2. Delete dependencies (Manual cascade)
+        // Get account IDs to delete their transactions and cards
         const [accIds] = await connection.query('SELECT acc_id FROM account WHERE client_id = ?', [id]);
         const ids = accIds.map(a => a.acc_id);
 
@@ -42,7 +42,7 @@ router.delete('/:id', async (req, res) => {
         await connection.query('DELETE FROM insurance WHERE client_id = ?', [id]);
         await connection.query('DELETE FROM loans WHERE client_id = ?', [id]);
 
-        // 3. Eliminar Cliente
+        // 3. Delete Client
         const [result] = await connection.query('DELETE FROM clients WHERE client_id = ?', [id]);
 
         if (result.affectedRows === 0) {
@@ -76,7 +76,7 @@ router.put('/:id', async (req, res) => {
             return res.status(404).json({ message: 'Client not found' });
         }
 
-        // Devolver los datos actualizados para actualizar el frontend
+        // Return updated data to update frontend
         const [updatedUser] = await db.query('SELECT * FROM clients WHERE client_id = ?', [id]);
 
         res.json({

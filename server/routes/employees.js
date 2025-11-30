@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 
-// Listar empleados
+// List employees
 router.get('/', async (req, res) => {
     try {
         const [rows] = await db.query('SELECT * FROM employees');
@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Crear empleado
+// Create employee
 router.post('/', async (req, res) => {
     const { name, position, branch_id, password } = req.body;
 
@@ -36,14 +36,14 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Eliminar empleado
+// Delete employee
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        // Primero desvinculamos al empleado de los préstamos que haya aprobado
+        // First unlink employee from approved loans
         await db.query('UPDATE loans SET emp_id_approved = NULL WHERE emp_id_approved = ?', [id]);
 
-        // Ahora sí lo eliminamos
+        // Now delete the employee
         await db.query('DELETE FROM employees WHERE emp_id = ?', [id]);
 
         res.json({ success: true, message: "Employee deleted successfully" });

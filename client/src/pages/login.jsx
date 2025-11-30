@@ -6,7 +6,7 @@ export default function Login({ onLogin, onRegister }) {
     const [error, setError] = useState('');
     const [bgImage, setBgImage] = useState('');
 
-    // Imágenes de fondo
+    // Background images
     const images = [
         '/backgrounds/SF1.jpg',
         '/backgrounds/SF2.jpg',
@@ -46,7 +46,7 @@ export default function Login({ onLogin, onRegister }) {
 
     return (
         <div className="min-h-screen flex">
-            {/* Lado Izquierdo: Imagen Aleatoria */}
+            {/* Left Side: Random Image */}
             <div
                 className="hidden lg:block lg:w-1/2 bg-cover bg-center relative"
                 style={{ backgroundImage: `url(${bgImage})` }}
@@ -59,7 +59,7 @@ export default function Login({ onLogin, onRegister }) {
                 </div>
             </div>
 
-            {/* Lado Derecho: Formulario */}
+            {/* Right Side: Form */}
             <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 p-8">
                 <div className="max-w-md w-full">
                     <div className="text-center mb-10">

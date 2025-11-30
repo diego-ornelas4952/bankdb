@@ -9,7 +9,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
     const [cardRequests, setCardRequests] = useState([]);
     const [accSelected, setAccSelection] = useState(null);
 
-    // Estados para Modals y Menú
+    // Menu modals
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -18,32 +18,32 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
     const [notifications, setNotifications] = useState([]);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-    // Estado para Solicitud de Préstamo
+    // Loan modal states
     const [loanAmount, setLoanAmount] = useState('');
     const [loanTerm, setLoanTerm] = useState(12);
 
-    // Estado para Nueva Transacción
+    // Transaction modal states
     const [transactionType, setTransactionType] = useState('DEPOSIT');
     const [transactionAmount, setTransactionAmount] = useState('');
     const [descTrn, setDescTrn] = useState('');
     const [idAccTrn, setIdAccTrn] = useState('');
     const [installments, setInstallments] = useState(1);
 
-    // Estado para Abrir Nueva Cuenta
+    // New account modal states
     const [newAccType, setNewAccType] = useState('Savings');
     const [currencyNewAccount, setCurrencyNewAccount] = useState('MXN');
 
-    // Estado para Tarjetas
+    // Cards modal states
     const [newCardAccId, setNewCardAccId] = useState('');
     const [visibleCardId, setVisibleCardId] = useState(null);
 
-    // Estado para Pago de Préstamo
+    // Payment modal states
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentAccId, setPaymentAccId] = useState('');
     const [selectedLoanId, setSelectedLoanId] = useState(null);
     const [isPayCreditCard, setIsPayCreditCard] = useState(false);
 
-    // Estado para Contratar Seguro
+    // Insurance modal states
     const [isInsuranceModalOpen, setIsInsuranceModalOpen] = useState(false);
     const [insuranceType, setInsuranceType] = useState('Life');
     const [annualPremium, setAnnualPremium] = useState('');
@@ -51,7 +51,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
     const [insuranceDuration, setInsuranceDuration] = useState(12);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-    // Estado para Edición de Perfil
+    // Profile modal states
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [editName, setEditName] = useState('');
     const [editLastname, setEditLastname] = useState('');
@@ -59,7 +59,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
     const [editPhone, setEditPhone] = useState('');
     const [editAddress, setEditAddress] = useState('');
 
-    // Inicializar datos de edición al abrir el modal
+    // Initialize edit data when opening the profile modal
     useEffect(() => {
         if (isProfileModalOpen && user) {
             setEditName(user.first_name);
@@ -87,7 +87,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
             .then(data => {
                 if (data.success) {
                     alert(data.message);
-                    onUpdateUser(data.user); // Actualizar estado global
+                    onUpdateUser(data.user); // Update global state
                     setIsEditingProfile(false);
                 } else {
                     alert("Error: " + data.message);
@@ -96,20 +96,20 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
             .catch(err => alert("Error updating profile: " + err.message));
     };
 
-    // Función para refrescar datos de cuentas y movimientos
+    // Function to refresh account and transaction data
     const refreshData = () => {
         if (user && user.client_id) {
             fetch(`http://localhost:3000/api/accounts/usuario/${user.client_id}`)
                 .then(res => res.json())
                 .then(data => {
                     setAccounts(data);
-                    // Si la cuenta seleccionada sigue existiendo, actualizarla, si no, seleccionar la primera
+                    // Update selected account if it still exists, otherwise select the first one
                     if (accSelected) {
                         const updatedAccount = data.find(c => c.acc_id === accSelected.acc_id);
                         if (updatedAccount) {
                             setAccSelection(updatedAccount);
-                            setIdAccTrn(updatedAccount.acc_id); // Asegurar que el ID de transacción también se actualice
-                            // Refrescar movimientos también
+                            setIdAccTrn(updatedAccount.acc_id); // Ensure transaction ID is also updated
+                            // Refresh transactions too
                             fetch(`http://localhost:3000/api/accounts/${updatedAccount.acc_id}/transactions`)
                                 .then(res => res.json())
                                 .then(movs => setTransactions(movs));
@@ -132,25 +132,25 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                 })
                 .catch(err => console.error("Error loading accounts:", err));
 
-            // Cargar seguros
+            // Load insurances
             fetch(`http://localhost:3000/api/insurance/user/${user.client_id}`)
                 .then(res => res.json())
                 .then(data => setInsurances(data))
                 .catch(err => console.error("Error loading insurances:", err));
 
-            // Cargar préstamos
+            // Load loans
             fetch(`http://localhost:3000/api/loans/client/${user.client_id}`)
                 .then(res => res.json())
                 .then(data => setLoans(data))
                 .catch(err => console.error("Error loading loans:", err));
 
-            // Cargar tarjetas
+            // Load cards
             fetch(`http://localhost:3000/api/cards/client/${user.client_id}`)
                 .then(res => res.json())
                 .then(data => setCards(data))
                 .catch(err => console.error("Error loading cards:", err));
 
-            // Cargar solicitudes de tarjetas
+            // Load card requests
             fetch(`http://localhost:3000/api/cards/requests/client/${user.client_id}`)
                 .then(res => res.json())
                 .then(data => setCardRequests(data))
@@ -160,7 +160,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                 .then(data => setCardRequests(data))
                 .catch(err => console.error("Error loading card requests:", err));
 
-            // Cargar notificaciones
+            // Load notifications
             fetch(`http://localhost:3000/api/notifications/client/${user.client_id}`)
                 .then(res => res.json())
                 .then(data => setNotifications(data))
@@ -169,12 +169,12 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
     };
 
 
-    // 1. Al cargar, buscamos las cuentas de este usuario
+    // searching for this user's accounts
     useEffect(() => {
         refreshData();
     }, [user]);
 
-    // 2. Cada vez que cambiamos de cuenta, buscamos sus movimientos
+    // Every time we change account, we search for its transactions
     useEffect(() => {
         if (accSelected) {
             fetch(`http://localhost:3000/api/accounts/${accSelected.acc_id}/transactions`)
@@ -182,13 +182,13 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                 .then(data => setTransactions(data))
                 .catch(err => console.error("Error loading transactions:", err));
         } else {
-            setTransactions([]); // Limpiar movimientos si no hay cuenta seleccionada
+            setTransactions([]); // Clear transactions if no account is selected
         }
     }, [accSelected]);
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Barra Superior */}
+            {/* Top Bar */}
             <nav className="bg-blue-900 text-white p-4 flex justify-between items-center shadow-lg relative z-20">
                 <div className="flex items-center gap-3">
                     <img src="/dbbank-logo.png" alt="DB Bank" className="h-12 object-contain" />
@@ -198,13 +198,13 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    {/* Notificaciones */}
+                    {/* Notifications */}
                     <div className="relative">
                         <button
                             onClick={() => {
                                 setIsNotificationsOpen(!isNotificationsOpen);
                                 if (!isNotificationsOpen && notifications.some(n => !n.is_read)) {
-                                    // Marcar todas como leídas al abrir
+                                    // Mark all as read when opening
                                     fetch(`http://localhost:3000/api/notifications/read-all/${user.client_id}`, { method: 'PUT' })
                                         .then(() => {
                                             setNotifications(notifications.map(n => ({ ...n, is_read: 1 })));
@@ -262,9 +262,9 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                         )}
                     </div>
 
-                    {/* Menú Desplegable */}
+                    {/* Dropdown menu */}
                     <div className="relative">
-                        <button
+                        <button // Menu button
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                             className="bg-blue-800 hover:bg-blue-700 px-4 py-2 rounded flex items-center gap-2 transition font-bold"
                         >
@@ -276,19 +276,19 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
 
                         {isMenuOpen && (
                             <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-xl py-2 text-gray-800 z-30">
-                                <button
+                                <button // Loans and Credit button
                                     onClick={() => { setIsLoanModalOpen(true); setIsMenuOpen(false); }}
                                     className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
                                 >
                                     💰 Loans and Credit
                                 </button>
-                                <button
+                                <button // Add Transaction button
                                     onClick={() => { setIsTransactionModalOpen(true); setIsMenuOpen(false); }}
                                     className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
                                 >
                                     🏧 Add Transaction
                                 </button>
-                                <button
+                                <button // Add Account button
                                     onClick={() => {
                                         if (accounts.length >= 5) {
                                             alert("You have reached the maximum limit of 5 accounts.");
@@ -302,26 +302,26 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                 >
                                     💳 Open New Account
                                 </button>
-                                <button
+                                <button // My Cards button
                                     onClick={() => { setIsCardsModalOpen(true); setIsMenuOpen(false); }}
                                     className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
                                 >
                                     💳 My Cards
                                 </button>
-                                <button
+                                <button // Contract Insurance button
                                     onClick={() => { setIsInsuranceModalOpen(true); setIsMenuOpen(false); }}
                                     className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
                                 >
                                     🛡️ Contract Insurance
                                 </button>
-                                <button
+                                <button // My Profile button    
                                     onClick={() => { setIsProfileModalOpen(true); setIsMenuOpen(false); }}
                                     className="block w-full text-left px-4 py-2 hover:bg-gray-100 transition"
                                 >
                                     👤 My Profile
                                 </button>
                                 <div className="border-t my-1"></div>
-                                <button
+                                <button // End Session button
                                     onClick={onLogout}
                                     className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition font-bold"
                                 >
@@ -335,7 +335,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
 
             <div className="max-w-6xl mx-auto p-6 space-y-8">
 
-                {/* Section 1: My Accounts (Horizontal Scroll) */}
+                {/* Section 1: My Accounts*/}
                 <div>
                     <h2 className="text-xl font-bold text-gray-700 mb-4">My Accounts</h2>
                     <div className="flex overflow-x-auto gap-6 pb-4 scrollbar-hide">
@@ -348,7 +348,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                     : 'bg-white border-transparent opacity-80'
                                     }`}
                             >
-                                <button
+                                <button // Delete Account button
                                     onClick={(e) => {
                                         e.stopPropagation();
 
@@ -426,12 +426,12 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                 const newVisibleId = visibleCardId === card.card_id ? null : card.card_id;
                                                 setVisibleCardId(newVisibleId);
 
-                                                // Si se abre la tarjeta, cargar sus movimientos
+                                                // Load transactions if card details are opened
                                                 if (newVisibleId) {
-                                                    // Buscar la cuenta asociada a esta tarjeta
+                                                    // Find account linked to this card
                                                     const linkedAccount = accounts.find(a => a.acc_id === card.acc_id);
                                                     if (linkedAccount) {
-                                                        setAccSelection(linkedAccount); // Esto disparará el useEffect que carga movimientos
+                                                        setAccSelection(linkedAccount); // This triggers the useEffect to load transactions
                                                     }
                                                 }
                                             }}
@@ -555,7 +555,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                         <div key={mov.trn_id} className="flex justify-between items-center p-4 hover:bg-gray-50 rounded-lg border-b border-gray-100 transition">
                                             <div className="flex items-center space-x-4">
                                                 <div className={`p-3 rounded-full ${mov.trn_type === 'DEPOSIT' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                                                    {/* Icono simple dependiendo del tipo */}
+                                                    {/* Simple icon based on type */}
                                                     {mov.trn_type === 'DEPOSIT' ? '⬇' : '⬆'}
                                                 </div>
                                                 <div>
@@ -587,7 +587,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                     <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-2xl">
                         <h2 className="text-xl font-bold text-gray-800 mb-4">Loans</h2>
 
-                        {/* Lista de Préstamos Existentes */}
+                        {/* Existing Loans List */}
                         <div className="mb-6">
                             <h3 className="text-sm font-bold text-gray-500 uppercase mb-2">My Active Loans</h3>
                             {loans.length > 0 ? (
@@ -663,7 +663,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                 )}
                                             </div>
 
-                                            {/* Formulario de Pago */}
+                                            {/* Payment Form */}
                                             {selectedLoanId === loan.loan_id && (
                                                 <div className="mt-3 p-3 bg-white border rounded shadow-inner">
                                                     <p className="text-xs font-bold text-gray-600 mb-2">
@@ -834,7 +834,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                 .then(data => {
                                                     alert(data.message);
                                                     setIsLoanModalOpen(false);
-                                                    refreshData(); // Recargar préstamos
+                                                    refreshData(); // Reload loans
                                                 })
                                                 .catch(err => console.error(err));
                                         }}
@@ -988,7 +988,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                 )
             }
 
-            {/* Modal: Abrir Cuenta */}
+            {/* Modal: Open Account */}
             {
                 isAccountModalOpen && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1063,7 +1063,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                 )
             }
 
-            {/* Modal: Perfil de Usuario */}
+            {/* Modal: User Profile */}
             {
                 isProfileModalOpen && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1191,7 +1191,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                 )
             }
 
-            {/* Modal: Contratar Seguro */}
+            {/* Modal: Contract Insurance */}
             {
                 isInsuranceModalOpen && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1378,7 +1378,7 @@ export default function ClientDashboard({ user, onLogout, onUpdateUser }) {
                                                     <span className="text-xs text-gray-500">Req #{req.request_id} - {new Date(req.request_date).toLocaleDateString()}</span>
                                                     <button
                                                         onClick={() => {
-                                                            // Simular aprobación automática con límite predefinido
+                                                            // Simulate automatic approval with predefined limit
                                                             const defaultLimit = 50000;
 
                                                             if (!confirm(`Activate your Credit Card with a pre-approved limit of $${defaultLimit}?`)) return;

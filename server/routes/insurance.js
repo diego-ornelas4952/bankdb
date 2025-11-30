@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 
-// Contratar un nuevo seguro
+// Contract new insurance
 router.post('/contract', async (req, res) => {
     const { client_id, ins_type, premium, beneficiary, duration } = req.body;
 
@@ -32,7 +32,7 @@ router.post('/contract', async (req, res) => {
     }
 });
 
-// Obtener seguros de un usuario
+// Get user insurances
 router.get('/user/:client_id', async (req, res) => {
     try {
         const [insurances] = await db.query('SELECT * FROM insurance WHERE client_id = ?', [req.params.client_id]);
@@ -43,7 +43,7 @@ router.get('/user/:client_id', async (req, res) => {
     }
 });
 
-// Cancelar seguro
+// Cancel insurance
 router.delete('/:ins_id', async (req, res) => {
     const { ins_id } = req.params;
     try {
